@@ -1,12 +1,12 @@
 # SGC
 
 
-# Back
+## Back
 cd bakend
 cd app
 uvicorn main:app --reload
 
 
-# Front
+## Front
 cd .\sgc-frontend\
 npm run dev
