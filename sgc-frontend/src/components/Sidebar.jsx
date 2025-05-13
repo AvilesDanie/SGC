@@ -21,7 +21,7 @@ const menusPorRol = {
   ],
   administrativo: [
     { to: '/dashboard/registro', label: 'Registro de Paciente' },
-    { to: '/dashboard/turno', label: 'Generar de Turnos' },
+    { to: '/dashboard/turno', label: 'Generar Turnos' },
     { to: '/dashboard/asistencia', label: 'Validar Asistencia' },
   ],
 }

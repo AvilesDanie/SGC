@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard'
 import CrearCuenta from './pages/CrearCuenta'
 import ActualizarCuenta from './pages/ActualizarCuenta'
 import GestionUsuarios from './pages/GestionUsuarios'
+import GenerarTurno from './pages/GenerarTurno'
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
       <Route path="/dashboard/actualizar-cuenta" element={<ActualizarCuenta />} />
       <Route path="/dashboard/usuarios" element={<GestionUsuarios />} />
       <Route path="/dashboard/registro" element={<RegistroPaciente />} />
+      <Route path="/dashboard/turno" element={<GenerarTurno />} />
     </Routes>
   )
 }

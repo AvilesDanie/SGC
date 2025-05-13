@@ -1,8 +1,8 @@
 from sqlmodel import SQLModel, Field, Relationship
 from typing import List, Optional
-from datetime import date
+from datetime import date, time
 import enum
-
+from enum import Enum
 
 class RoleEnum(str, enum.Enum):
     super_admin = "super_admin"
@@ -50,3 +50,36 @@ class HorarioLaboral(SQLModel, table=True):
     hora_fin: str
 
     usuario: Optional["User"] = Relationship(back_populates="horario")
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Enum para estado de la cita
+class EstadoCitaEnum(str, Enum):
+    agendado = "agendado"
+    para_signos = "para signos"
+    en_espera = "en espera"
+    en_consulta = "en consulta"
+    terminado = "terminado"
+    perdida = "perdida"
+
+class Cita(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+    paciente_id: int = Field(foreign_key="user.id")
+    medico_id: int = Field(foreign_key="user.id")
+
+    fecha: date
+    hora_inicio: time
+    hora_fin: time
+
+    estado: EstadoCitaEnum = Field(default=EstadoCitaEnum.agendado)

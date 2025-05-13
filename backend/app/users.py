@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session, delete, select
-from models import Especialidad, HorarioLaboral, User
-from schemas import ExtendedUserCreate, HorarioItem, UserCreate, Token, UserRead, UserUpdate
+from sqlmodel import Session, delete, or_, select
+from models import Cita, Especialidad, HorarioLaboral, User
+from schemas import CitaCreate, CitaRead, EstadoCita, ExtendedUserCreate, HorarioItem, UserCreate, Token, UserRead, UserUpdate
 from auth import get_password_hash, authenticate_user, create_access_token
 from database import get_session
 from fastapi.security import OAuth2PasswordRequestForm
-from datetime import timedelta
+from datetime import date, timedelta
 from dependencies import get_current_user
 from fastapi import Security
 from typing import List, Optional
@@ -33,6 +33,7 @@ from schemas import ExtendedUserCreate
 from dependencies import get_current_user
 from auth import get_password_hash
 from database import get_session
+from datetime import time
 
 
 router = APIRouter()
@@ -350,3 +351,138 @@ def eliminar_usuario(
     session.commit()
     return {"message": "Usuario eliminado correctamente"}
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@router.get("/usuarios/paciente/{cedula}", response_model=UserRead)
+def obtener_paciente_por_cedula(cedula: str, session: Session = Depends(get_session)):
+    paciente = session.exec(
+        select(User).where(
+            User.cedula == cedula,
+            User.role == RoleEnum.paciente
+        )
+    ).first()
+
+    if not paciente:
+        raise HTTPException(status_code=404, detail="Paciente no encontrado.")
+
+    return paciente
+
+
+@router.get("/usuarios/medicos/especialidad/{nombre_especialidad}", response_model=list[UserRead])
+def obtener_medicos_por_especialidad(nombre_especialidad: str, session: Session = Depends(get_session)):
+    especialidad = session.exec(
+        select(Especialidad).where(Especialidad.nombre == nombre_especialidad)
+    ).first()
+
+    if not especialidad:
+        raise HTTPException(status_code=404, detail="Especialidad no encontrada.")
+
+    medicos = session.exec(
+        select(User).where(
+            User.role == RoleEnum.medico,
+            User.especialidad_id == especialidad.id
+        )
+    ).all()
+
+    if not medicos:
+        raise HTTPException(status_code=404, detail="No hay médicos con esa especialidad.")
+
+    return medicos
+
+
+@router.get("/citas/medico/{medico_id}", response_model=List[CitaRead])
+def obtener_citas_activas_por_medico(
+    medico_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    # Validación de acceso por rol
+    if current_user.role not in [RoleEnum.super_admin, RoleEnum.medico, RoleEnum.administrativo]:
+        raise HTTPException(status_code=403, detail="Acceso denegado")
+
+    hoy = date.today()
+
+    citas = session.exec(
+        select(Cita)
+        .where(Cita.medico_id == medico_id)
+        .where(Cita.fecha >= hoy)
+        .where(Cita.estado.notin_([EstadoCita.terminado, EstadoCita.perdida]))
+        .order_by(Cita.fecha, Cita.hora_inicio)
+    ).all()
+
+    return citas
+
+
+
+
+
+
+
+@router.post("/citas")
+def crear_cita(cita_data: CitaCreate, session: Session = Depends(get_session)):
+    # Validar solapamiento
+    conflictos = session.exec(
+        select(Cita).where(
+            Cita.medico_id == cita_data.medico_id,
+            Cita.fecha == cita_data.fecha,
+            or_(
+                Cita.hora_inicio == cita_data.hora_inicio,
+                Cita.hora_fin == cita_data.hora_fin,
+                (Cita.hora_inicio < cita_data.hora_inicio) & (Cita.hora_fin > cita_data.hora_inicio),
+                (Cita.hora_inicio < cita_data.hora_fin) & (Cita.hora_fin > cita_data.hora_fin),
+                (Cita.hora_inicio >= cita_data.hora_inicio) & (Cita.hora_fin <= cita_data.hora_fin),
+            )
+        )
+    ).first()
+
+    if conflictos:
+        raise HTTPException(status_code=400, detail="El médico ya tiene una cita en ese horario.")
+
+    # Validar que esté dentro del horario laboral
+    dia_nombre = cita_data.fecha.strftime("%A").lower()
+    dias_map = {
+        "monday": "lunes", "tuesday": "martes", "wednesday": "miércoles",
+        "thursday": "jueves", "friday": "viernes", "saturday": "sábado", "sunday": "domingo"
+    }
+    dia_local = dias_map[dia_nombre]
+
+    horario = session.exec(
+        select(HorarioLaboral).where(
+            HorarioLaboral.user_id == cita_data.medico_id,
+            HorarioLaboral.dia == dia_local
+        )
+    ).first()
+
+    if not horario:
+        raise HTTPException(status_code=400, detail="El médico no tiene horario ese día.")
+
+    # Convertir todo a objetos `datetime.time`
+    def str_to_time(val):
+        return time.fromisoformat(val) if isinstance(val, str) else val
+
+    cita_inicio = str_to_time(cita_data.hora_inicio)
+    cita_fin = str_to_time(cita_data.hora_fin)
+    horario_inicio = str_to_time(horario.hora_inicio)
+    horario_fin = str_to_time(horario.hora_fin)
+
+    if not (horario_inicio <= cita_inicio < horario_fin and horario_inicio < cita_fin <= horario_fin):
+        raise HTTPException(status_code=400, detail="La cita está fuera del horario laboral del médico.")
+
+    nueva_cita = Cita.from_orm(cita_data)
+    session.add(nueva_cita)
+    session.commit()
+    session.refresh(nueva_cita)
+
+    return {"message": "Cita creada exitosamente", "cita_id": nueva_cita.id}
