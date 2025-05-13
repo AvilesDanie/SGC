@@ -82,76 +82,73 @@ function GestionUsuarios() {
   )
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen bg-gradient-to-br from-white to-cyan-100">
       <Sidebar role={role} />
+      <div className="flex-1 ml-64 p-8 overflow-y-auto">
 
-      <div className="flex-1 p-6 ml-64">
 
 
-        <h2 className="text-2xl font-bold mb-4">Gestión de Usuarios</h2>
+        <h2 className="text-3xl font-bold text-teal-800 mb-6">Gestión de Usuarios</h2>
 
-        <div className="mb-4 flex space-x-4">
+        <div className="mb-4 flex flex-wrap gap-2 items-center">
           <input
-            placeholder="Filtrar por nombre"
-            className="border p-2 rounded"
+            placeholder="Nombre"
+            className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-teal-400"
             value={filtro.nombre}
             onChange={(e) => setFiltro({ ...filtro, nombre: e.target.value })}
           />
           <input
-            placeholder="Filtrar por especialidad"
-            className="border p-2 rounded"
+            placeholder="Especialidad"
+            className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-teal-400"
             value={filtro.especialidad}
             onChange={(e) => setFiltro({ ...filtro, especialidad: e.target.value })}
           />
           <select
-            className="border p-2 rounded"
+            className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-teal-400"
             value={filtro.rol}
             onChange={(e) => setFiltro({ ...filtro, rol: e.target.value })}
           >
-            <option value="">Todos los roles</option>
-            <option value="super_admin">Super Admin</option>
-            <option value="medico">Médico</option>
-            <option value="enfermero">Enfermero</option>
-            <option value="paciente">Paciente</option>
-            <option value="administrativo">Administrativo</option>
-            <option value="farmacologo">Farmacólogo</option>
+            <option value="">Rol</option>
+            {['super_admin', 'medico', 'enfermero', 'administrativo', 'farmacologo', 'paciente'].map(r => (
+              <option key={r} value={r}>{r}</option>
+            ))}
           </select>
         </div>
 
-        <table className="w-full border text-sm">
-          <thead>
-            <tr className="bg-blue-200 text-left">
-              <th className="p-2 border">Nombre</th>
-              <th className="p-2 border">Usuario</th>
-              <th className="p-2 border">Rol</th>
-              <th className="p-2 border">Cédula</th>
-              <th className="p-2 border">Filiación</th>
-              <th className="p-2 border">Especialidad</th>
-              <th className="p-2 border">Horario</th>
-              <th className="p-2 border">Acciones</th>
+
+        <table className="w-full border border-gray-200 text-sm shadow-sm rounded-md overflow-hidden bg-white">
+          <thead className="bg-teal-600 text-white text-left">
+            <tr>
+              {['Nombre', 'Usuario', 'Rol', 'Cédula', 'Filiación', 'Especialidad', 'Horario', 'Acciones'].map((h, i) => (
+                <th key={i} className="p-3">{h}</th>
+              ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-gray-100">
             {usuariosFiltrados.map((u) => (
-              <tr key={u.id} className="border">
-                <td className="p-2">{u.nombre} {u.apellido}</td>
-                <td className="p-2">{u.username}</td>
-                <td className="p-2">{u.role}</td>
-                <td className="p-2">{u.cedula}</td>
-                <td className="p-2">{u.numero_filiacion || '-'}</td>
-                <td className="p-2">{u.especialidad_nombre || '-'}</td>
-                <td className="p-2">
+              <tr key={u.id} className="hover:bg-teal-50 transition">
+                <td className="p-3">{u.nombre} {u.apellido}</td>
+                <td className="p-3">{u.username}</td>
+                <td className="p-3 capitalize">{u.role}</td>
+                <td className="p-3">{u.cedula}</td>
+                <td className="p-3">{u.numero_filiacion || '-'}</td>
+                <td className="p-3">{u.especialidad_nombre || '-'}</td>
+                <td className="p-3">
                   {u.role !== 'paciente' && u.horario?.length > 0 ? (
-                    <ul className="list-disc ml-4">
+                    <ul className="list-disc ml-5">
                       {u.horario.map((h, i) => (
                         <li key={i}>{h.dia}: {h.hora_inicio} - {h.hora_fin}</li>
                       ))}
                     </ul>
                   ) : '-'}
                 </td>
-                <td className="p-2 space-x-2">
-                  <button onClick={() => abrirModalEdicion(u)} className="bg-yellow-500 text-white px-2 py-1 rounded">Editar</button>
-                  <button onClick={() => handleEliminar(u.id)} className="bg-red-600 text-white px-2 py-1 rounded">Eliminar</button>
+                <td className="p-3 space-x-2">
+                  <button onClick={() => abrirModalEdicion(u)} className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm">
+                    Editar
+                  </button>
+                  <button onClick={() => handleEliminar(u.id)} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
+                    Eliminar
+                  </button>
                 </td>
               </tr>
             ))}
@@ -159,48 +156,66 @@ function GestionUsuarios() {
         </table>
 
         {modalUsuario && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-            <div className="bg-white p-6 w-full max-w-4xl rounded shadow-lg overflow-y-auto max-h-[90vh]">
-              <h3 className="text-2xl font-bold mb-6">Editar Usuario</h3>
+          <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50 px-4">
+            <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+              <h3 className="text-2xl font-bold text-teal-800 mb-6 text-center">Editar Usuario</h3>
 
-              <div className="grid grid-cols-2 gap-4">
-                <input className="border p-2 rounded" placeholder="Nombre"
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <input
+                  className="input"
+                  placeholder="Nombre"
                   value={formEdit.nombre || ''}
                   onChange={(e) => setFormEdit({ ...formEdit, nombre: e.target.value })}
                 />
-                <input className="border p-2 rounded" placeholder="Apellido"
+                <input
+                  className="input"
+                  placeholder="Apellido"
                   value={formEdit.apellido || ''}
                   onChange={(e) => setFormEdit({ ...formEdit, apellido: e.target.value })}
                 />
-                <input className="border p-2 rounded" type="date"
+                <input
+                  className="input"
+                  type="date"
                   value={formEdit.fecha_nacimiento || ''}
                   onChange={(e) => setFormEdit({ ...formEdit, fecha_nacimiento: e.target.value })}
                 />
-                <input className="border p-2 rounded" placeholder="Dirección"
+                <input
+                  className="input"
+                  placeholder="Dirección"
                   value={formEdit.direccion || ''}
                   onChange={(e) => setFormEdit({ ...formEdit, direccion: e.target.value })}
                 />
-                <input className="border p-2 rounded" placeholder="Teléfono"
+                <input
+                  className="input"
+                  placeholder="Teléfono"
                   value={formEdit.telefono || ''}
                   onChange={(e) => setFormEdit({ ...formEdit, telefono: e.target.value })}
                 />
-                <input className="border p-2 rounded" placeholder="Usuario"
+                <input
+                  className="input"
+                  placeholder="Usuario"
                   value={formEdit.username}
                   onChange={(e) => setFormEdit({ ...formEdit, username: e.target.value })}
                 />
-                <input className="border p-2 rounded" placeholder="Cédula"
+                <input
+                  className="input"
+                  placeholder="Cédula"
                   value={formEdit.cedula}
                   onChange={(e) => setFormEdit({ ...formEdit, cedula: e.target.value })}
                 />
-                <input className="border p-2 rounded" placeholder="Nueva contraseña"
+                <input
+                  className="input"
+                  placeholder="Nueva contraseña"
+                  type="password"
                   value={formEdit.password}
                   onChange={(e) => setFormEdit({ ...formEdit, password: e.target.value })}
-                  type="password"
                 />
 
-                <select className="border p-2 rounded col-span-2"
+                <select
+                  className="input col-span-1 md:col-span-2"
                   value={formEdit.role}
-                  onChange={(e) => setFormEdit({ ...formEdit, role: e.target.value })}>
+                  onChange={(e) => setFormEdit({ ...formEdit, role: e.target.value })}
+                >
                   <option value="super_admin">super_admin</option>
                   <option value="medico">medico</option>
                   <option value="enfermero">enfermero</option>
@@ -208,43 +223,60 @@ function GestionUsuarios() {
                   <option value="farmacologo">farmacologo</option>
                   <option value="paciente">paciente</option>
                 </select>
-
-                {formEdit.role === 'medico' && (
-                  <>
-                    <input className="border p-2 rounded col-span-2" placeholder="Especialidad"
-                      value={formEdit.especialidad}
-                      onChange={(e) => setFormEdit({ ...formEdit, especialidad: e.target.value })}
-                    />
-                    <div className="col-span-2">
-                      <h4 className="font-semibold mb-2 mt-2">Horario laboral</h4>
-                      {diasSemana.map(dia => (
-                        <div key={dia} className="flex items-center space-x-2 mb-2">
-                          <label className="capitalize w-24">{dia}</label>
-                          <input type="time"
-                            value={formEdit.horario?.find(h => h.dia === dia)?.hora_inicio || ''}
-                            onChange={(e) => updateHorario(dia, 'hora_inicio', e.target.value)}
-                            className="border p-1 rounded"
-                          />
-                          <span>-</span>
-                          <input type="time"
-                            value={formEdit.horario?.find(h => h.dia === dia)?.hora_fin || ''}
-                            onChange={(e) => updateHorario(dia, 'hora_fin', e.target.value)}
-                            className="border p-1 rounded"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
               </div>
 
-              <div className="mt-6 flex justify-end space-x-2">
-                <button className="bg-green-600 text-white px-4 py-2 rounded" onClick={handleGuardar}>Guardar</button>
-                <button className="bg-gray-400 px-4 py-2 rounded" onClick={() => setModalUsuario(null)}>Cancelar</button>
+              {/* Especialidad y horario para médicos */}
+              {formEdit.role === 'medico' && (
+                <div className="mt-6">
+                  <input
+                    className="input w-full mb-4"
+                    placeholder="Especialidad"
+                    value={formEdit.especialidad}
+                    onChange={(e) => setFormEdit({ ...formEdit, especialidad: e.target.value })}
+                  />
+                  <h4 className="text-lg font-semibold text-teal-700 mb-2">Horario laboral</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {diasSemana.map(dia => (
+                      <div key={dia} className="flex items-center gap-2">
+                        <label className="capitalize w-24">{dia}</label>
+                        <input
+                          type="time"
+                          value={formEdit.horario?.find(h => h.dia === dia)?.hora_inicio || ''}
+                          onChange={(e) => updateHorario(dia, 'hora_inicio', e.target.value)}
+                          className="input-time"
+                        />
+                        <span>-</span>
+                        <input
+                          type="time"
+                          value={formEdit.horario?.find(h => h.dia === dia)?.hora_fin || ''}
+                          onChange={(e) => updateHorario(dia, 'hora_fin', e.target.value)}
+                          className="input-time"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Acciones */}
+              <div className="mt-8 flex justify-end gap-4">
+                <button
+                  className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded font-medium"
+                  onClick={handleGuardar}
+                >
+                  Guardar
+                </button>
+                <button
+                  className="bg-gray-400 hover:bg-gray-500 text-white px-5 py-2 rounded font-medium"
+                  onClick={() => setModalUsuario(null)}
+                >
+                  Cancelar
+                </button>
               </div>
             </div>
           </div>
         )}
+
 
       </div>
     </div>

@@ -3,7 +3,7 @@ import LoginPage from './pages/LoginPage'
 import RegistroPaciente from './pages/RegistroPaciente'
 import Dashboard from './pages/Dashboard'
 import CrearCuenta from './pages/CrearCuenta'
-import ActualizarCuenta from './pages/ActualizarCuenta' // ← Nuevo
+import ActualizarCuenta from './pages/ActualizarCuenta'
 import GestionUsuarios from './pages/GestionUsuarios'
 
 function App() {

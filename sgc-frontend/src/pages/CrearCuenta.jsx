@@ -41,16 +41,16 @@ function CrearCuenta() {
   useEffect(() => {
     const role = localStorage.getItem('role')
     setRole(role || '')
-  
+
     if (role !== 'super_admin') {
       navigate('/dashboard')
     }
-  
+
     axios.get('http://localhost:8000/especialidades')
       .then(res => setEspecialidades(res.data))
       .catch(() => setEspecialidades([]))
   }, [])
-  
+
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -257,68 +257,168 @@ function CrearCuenta() {
     }
   }
 
+  const [modalVisible, setModalVisible] = useState(false)
+  const [modalContent, setModalContent] = useState({ tipo: '', mensaje: '' })
+
+  useEffect(() => {
+    if (mensaje) {
+      setModalContent({ tipo: 'success', mensaje })
+      setModalVisible(true)
+    }
+    if (error) {
+      setModalContent({ tipo: 'error', mensaje: error })
+      setModalVisible(true)
+    }
+  }, [mensaje, error])
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen bg-gradient-to-br from-white to-cyan-100">
       <Sidebar role={role} />
 
-      <div className="flex-1 p-6 ml-64">
-        <h1 className="text-2xl font-bold mb-4">Crear nueva cuenta</h1>
-        {mensaje && <p className="text-green-600 mb-2">{mensaje}</p>}
-        {error && <p className="text-red-500 mb-2">{error}</p>}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input name="cedula" placeholder="Cédula" value={form.cedula} onChange={handleChange} className="w-full border p-2 rounded" />
-          <input name="nombre" placeholder="Nombre" value={form.nombre} onChange={handleChange} className="w-full border p-2 rounded" />
-          <input name="apellido" placeholder="Apellido" value={form.apellido} onChange={handleChange} className="w-full border p-2 rounded" />
-          <input type="date" name="fecha_nacimiento" value={form.fecha_nacimiento} onChange={handleChange} className="w-full border p-2 rounded" />
-          <input name="direccion" placeholder="Dirección" value={form.direccion} onChange={handleChange} className="w-full border p-2 rounded" />
-          <input name="telefono" placeholder="Teléfono" value={form.telefono} onChange={handleChange} className="w-full border p-2 rounded" />
+      <div className="flex-1 ml-64 p-8 overflow-y-auto">
+        <div className="bg-white shadow-xl rounded-xl p-8 max-w-3xl mx-auto">
+          <h1 className="text-3xl font-bold text-teal-800 mb-6 text-center">Crear nueva cuenta</h1>
 
-          <select name="role" value={form.role} onChange={handleRoleChange} className="w-full border p-2 rounded">
-            {rolesDisponibles.map((r, i) => <option key={i} value={r}>{r}</option>)}
-          </select>
 
-          <input name="username" placeholder="Usuario" value={form.username} onChange={handleChange} className="w-full border p-2 rounded" />
-          <input name="password" type="password" placeholder="Contraseña" value={form.password} onChange={handleChange} className="w-full border p-2 rounded" />
 
-          {form.role === 'medico' && (
-            <>
-              <label className="block">Especialidad:</label>
-              <select onChange={handleEspecialidadChange} className="w-full border p-2 rounded">
-                <option value="">Seleccionar especialidad</option>
-                {especialidades.map((e) => <option key={e.id} value={e.nombre}>{e.nombre}</option>)}
-                <option value="__otra__">Otra...</option>
-              </select>
-              {usarOtraEspecialidad && (
-                <input
-                  name="especialidad"
-                  placeholder="Nueva especialidad"
-                  value={form.especialidad}
-                  onChange={handleChange}
-                  className="w-full border p-2 rounded mt-2"
-                />
-              )}
-            </>
-          )}
+          <form onSubmit={handleSubmit} className="space-y-8">
+            {/* === DATOS PERSONALES === */}
+            <div>
+              <h2 className="text-lg font-semibold text-teal-700 mb-4">Datos personales</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {[
+                  { id: "cedula", label: "Cédula", placeholder: "Ej. 0912345678" },
+                  { id: "nombre", label: "Nombre", placeholder: "Ej. Juan" },
+                  { id: "apellido", label: "Apellido", placeholder: "Ej. Pérez" },
+                  { id: "telefono", label: "Teléfono", placeholder: "Ej. 0991234567" },
+                  { id: "direccion", label: "Dirección", placeholder: "Ej. Av. Siempre Viva 123" },
+                  { id: "fecha_nacimiento", label: "Fecha de nacimiento", type: "date", placeholder: "" }
+                ].map((field) => (
+                  <div key={field.id} className="flex flex-col">
+                    <label htmlFor={field.id} className="text-gray-700 font-medium mb-1">
+                      {field.label}
+                    </label>
+                    <input
+                      id={field.id}
+                      name={field.id}
+                      type={field.type || "text"}
+                      placeholder={field.placeholder}
+                      value={form[field.id]}
+                      onChange={handleChange}
+                      className="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
 
-          {form.role !== 'paciente' && (
-            <>
-              <h3 className="text-lg font-semibold mt-4 mb-2">Horario laboral</h3>
-              {diasSemana.map((dia, i) => (
-                <div key={i} className="flex items-center space-x-2 mb-2">
-                  <label className="w-24 capitalize">{dia}</label>
-                  <input type="time" onChange={(e) => updateHorario(dia, 'hora_inicio', e.target.value)} className="border p-1 rounded" />
-                  <span>-</span>
-                  <input type="time" onChange={(e) => updateHorario(dia, 'hora_fin', e.target.value)} className="border p-1 rounded" />
+            {/* === CREDENCIALES Y ROL === */}
+            <div>
+              <h2 className="text-lg font-semibold text-teal-700 mb-4">Rol y credenciales</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex flex-col">
+                  <label htmlFor="role" className="text-gray-700 font-medium mb-1">Rol</label>
+                  <select
+                    id="role"
+                    name="role"
+                    value={form.role}
+                    onChange={handleRoleChange}
+                    className="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                  >
+                    {rolesDisponibles.map((r, i) => <option key={i} value={r}>{r}</option>)}
+                  </select>
                 </div>
-              ))}
-            </>
-          )}
 
-          <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Crear cuenta</button>
-        </form>
+                <div className="flex flex-col">
+                  <label htmlFor="username" className="text-gray-700 font-medium mb-1">Usuario</label>
+                  <input
+                    id="username"
+                    name="username"
+                    placeholder="Ej. juanperez"
+                    value={form.username}
+                    onChange={handleChange}
+                    className="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                  />
+                </div>
+
+                <div className="flex flex-col">
+                  <label htmlFor="password" className="text-gray-700 font-medium mb-1">Contraseña</label>
+                  <input
+                    id="password"
+                    type="password"
+                    name="password"
+                    placeholder="Ej. ********"
+                    value={form.password}
+                    onChange={handleChange}
+                    className="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Especialidad */}
+            {form.role === 'medico' && (
+              <>
+              <h2 className="text-lg font-semibold text-teal-700 mb-4">Especialidad</h2>
+
+                <select onChange={handleEspecialidadChange} className="input">
+                  <option value="">Seleccionar especialidad</option>
+                  {especialidades.map((e) => <option key={e.id} value={e.nombre}>{e.nombre}</option>)}
+                  <option value="__otra__">Otra...</option>
+                </select>
+                {usarOtraEspecialidad && (
+                  <input name="especialidad" placeholder="Nueva especialidad" value={form.especialidad} onChange={handleChange} className="input" />
+                )}
+              </>
+            )}
+
+            {/* Horarios */}
+            {form.role !== 'paciente' && (
+              <>
+                <h3 className="text-lg font-semibold mt-6 text-teal-700">Horario laboral</h3>
+                {diasSemana.map((dia, i) => (
+                  <div key={i} className="flex items-center space-x-2 mb-2">
+                    <label className="w-24 capitalize text-gray-600">{dia}</label>
+                    <input type="time" onChange={(e) => updateHorario(dia, 'hora_inicio', e.target.value)} className="input-time" />
+                    <span>-</span>
+                    <input type="time" onChange={(e) => updateHorario(dia, 'hora_fin', e.target.value)} className="input-time" />
+                  </div>
+                ))}
+              </>
+            )}
+
+            <button type="submit" className="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2 rounded-lg transition duration-200">
+              Crear cuenta
+            </button>
+          </form>
+        </div>
       </div>
+
+
+      {/* Mensajes de estado */}
+      {modalVisible && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+            <h3 className={`text-xl font-bold mb-2 ${modalContent.tipo === 'error' ? 'text-red-600' : 'text-green-600'}`}>
+              {modalContent.tipo === 'error' ? 'Error' : 'Éxito'}
+            </h3>
+            <p className="text-gray-700 mb-4">{modalContent.mensaje}</p>
+            <div className="text-right">
+              <button
+                onClick={() => setModalVisible(false)}
+                className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+
     </div>
+
+
   )
 }
 

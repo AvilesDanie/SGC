@@ -1,2 +1,12 @@
 @import "tailwindcss";
+@tailwindcss/preflight;
+@tailwind utilities;
 
+
+
+.input {
+  @apply w-full border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400;
+}
+.input-time {
+  @apply border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-teal-400;
+}

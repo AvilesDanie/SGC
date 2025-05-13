@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import Sidebar from '../components/Sidebar' // asegúrate de que la ruta es correcta
+import Sidebar from '../components/Sidebar'
 
 function ActualizarCuenta() {
   const [role, setRole] = useState('')
@@ -64,38 +64,51 @@ function ActualizarCuenta() {
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen bg-gradient-to-br from-white to-cyan-100">
       <Sidebar role={role} />
 
-      <div className="flex-1 p-6 ml-64">
-        <h2 className="text-2xl font-bold mb-4">Actualizar cuenta</h2>
-        {mensaje && <p className="text-green-600 mb-2">{mensaje}</p>}
-        {error && <p className="text-red-500 mb-2">{error}</p>}
+      <div className="flex-1 ml-64 flex items-center justify-center">
+        <div className="bg-white shadow-xl rounded-xl p-8 w-full max-w-md">
+          <h2 className="text-3xl font-bold text-teal-800 mb-6 text-center">
+            Actualizar cuenta
+          </h2>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="text"
-            name="username"
-            placeholder="Nuevo nombre de usuario"
-            value={form.username}
-            onChange={handleChange}
-            className="w-full border p-2 rounded"
-          />
-          <input
-            type="password"
-            name="password"
-            placeholder="Nueva contraseña"
-            value={form.password}
-            onChange={handleChange}
-            className="w-full border p-2 rounded"
-          />
-          <button
-            type="submit"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
-          >
-            Guardar cambios
-          </button>
-        </form>
+          {mensaje && <p className="text-green-600 mb-4 text-center">{mensaje}</p>}
+          {error && <p className="text-red-500 mb-4 text-center">{error}</p>}
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-gray-700 font-medium mb-1">Nuevo nombre de usuario</label>
+              <input
+                type="text"
+                name="username"
+                placeholder="ej. usuario123"
+                value={form.username}
+                onChange={handleChange}
+                className="w-full border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
+              />
+            </div>
+
+            <div>
+              <label className="block text-gray-700 font-medium mb-1">Nueva contraseña</label>
+              <input
+                type="password"
+                name="password"
+                placeholder="••••••••"
+                value={form.password}
+                onChange={handleChange}
+                className="w-full border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2 rounded-lg transition duration-200"
+            >
+              Guardar cambios
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   )

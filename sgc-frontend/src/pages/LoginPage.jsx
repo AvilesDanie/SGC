@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
+import logo from '../assets/logo sgc.png'
 
 function LoginPage() {
     const [username, setUsername] = useState('')
@@ -19,7 +20,6 @@ function LoginPage() {
             const { access_token } = res.data
             localStorage.setItem('token', access_token)
 
-            // Opcional: consultar /me para saber el rol
             const me = await axios.get('http://localhost:8000/me', {
                 headers: { Authorization: `Bearer ${access_token}` }
             })
@@ -33,17 +33,50 @@ function LoginPage() {
     }
 
     return (
-        <div className="h-screen flex justify-center items-center bg-gray-100">
-            <form onSubmit={handleLogin} className="bg-white shadow-md rounded p-6 w-80">
-                <h2 className="text-xl font-bold mb-4">Iniciar Sesión</h2>
-                {error && <p className="text-red-500 text-sm">{error}</p>}
-                <input type="text" placeholder="Usuario" value={username} onChange={e => setUsername(e.target.value)} className="w-full border p-2 mb-3 rounded" />
-                <input type="password" placeholder="Contraseña" value={password} onChange={e => setPassword(e.target.value)} className="w-full border p-2 mb-4 rounded" />
-                <button className="bg-blue-500 hover:bg-blue-600 text-white w-full py-2 rounded">Ingresar</button>
-                <p className="mt-4 text-sm text-center">
-                    ¿No tienes cuenta? <a href="/registro-paciente" className="text-blue-600">Regístrate</a>
-                </p>
+        <div className="h-screen flex justify-center items-center bg-gradient-to-br from-teal-100 to-cyan-200">
+            <form
+                onSubmit={handleLogin}
+                className="bg-white shadow-xl rounded-2xl px-10 py-8 w-full max-w-md animate-fade-in"
+            >
+                <div className="flex justify-center mb-6">
+                    <img src={logo} alt="Logo SGC" className="h-20 w-auto" />
+                </div>
+                <h2 className="text-2xl font-semibold text-center text-gray-700 mb-4">Iniciar Sesión</h2>
+                {error && <p className="text-red-600 text-sm mb-3 text-center">{error}</p>}
+                <label className="block mb-2 text-gray-700 font-medium">Usuario</label>
+                <input
+                    type="text"
+                    placeholder="Ingrese su usuario"
+                    value={username}
+                    onChange={e => setUsername(e.target.value)}
+                    className="w-full border border-gray-300 rounded px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+                <label className="block mb-2 text-gray-700 font-medium">Contraseña</label>
+                <input
+                    type="password"
+                    placeholder="Ingrese su contraseña"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    className="w-full border border-gray-300 rounded px-4 py-2 mb-6 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+                <button
+                    type="submit"
+                    className="bg-teal-600 hover:bg-teal-700 text-white font-semibold w-full py-2 rounded-lg transition duration-200"
+                >
+                    Ingresar
+                </button>
             </form>
+
+            {/* Animación de entrada */}
+            <style>{`
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(20px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .animate-fade-in {
+                    animation: fadeIn 0.6s ease-out;
+                }
+            `}</style>
         </div>
     )
 }

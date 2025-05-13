@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import logo from '../assets/logo sgc.png'
 
 const menusPorRol = {
   super_admin: [
@@ -24,29 +25,47 @@ function Sidebar({ role }) {
   const menu = menusPorRol[role] || []
 
   return (
-    <div className="fixed top-0 left-0 w-64 h-screen bg-blue-800 text-white p-4 overflow-y-auto shadow-md z-50">
-      <h2 className="text-lg font-bold mb-4">Panel - {role}</h2>
-      <nav className="flex flex-col space-y-2">
-        {menu.map((item, i) => (
-          <Link key={i} to={item.to} className="hover:bg-blue-600 p-2 rounded">
-            {item.label}
+    <div className="fixed top-0 left-0 w-64 h-screen bg-teal-800 text-white flex flex-col justify-between shadow-lg z-50">
+      {/* Encabezado con logo que redirige */}
+      <div className="relative">
+        <div className="bg-gradient-to-b from-black/90 to-transparent p-6">
+          <Link to="/dashboard" className="flex items-center gap-3 hover:opacity-90">
+            <img src={logo} alt="Logo SGC" className="h-20 w-20" />
+            <span className="text-4xl font-bold tracking-wide text-white">SGC</span>
           </Link>
-        ))}
+          <h2 className="text-lg mt-4 font-semibold text-white">
+            Panel - {role}
+          </h2>
+        </div>
+      </div>
 
-        <Link to="/dashboard/actualizar-cuenta" className="hover:bg-blue-600 p-2 rounded">
-          Actualizar Cuenta
-        </Link>
+      {/* Menú */}
+      <div className="p-6 flex-1 overflow-y-auto">
+        <nav className="flex flex-col space-y-2">
+          {menu.map((item, i) => (
+            <Link key={i} to={item.to} className="hover:bg-teal-700 p-2 rounded">
+              {item.label}
+            </Link>
+          ))}
 
+          <Link to="/dashboard/actualizar-cuenta" className="hover:bg-teal-700 p-2 rounded">
+            Actualizar Cuenta
+          </Link>
+        </nav>
+      </div>
+
+      {/* Cerrar sesión */}
+      <div className="p-6 border-t border-teal-700">
         <button
           onClick={() => {
             localStorage.clear()
             window.location.href = '/login'
           }}
-          className="mt-4 bg-red-600 hover:bg-red-700 p-2 rounded text-sm"
+          className="w-full bg-red-600 hover:bg-red-700 p-2 rounded text-sm font-semibold"
         >
           Cerrar sesión
         </button>
-      </nav>
+      </div>
     </div>
   )
 }
