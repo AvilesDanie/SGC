@@ -68,12 +68,16 @@ def register_user(
     current_user: Optional[dict] = Depends(get_current_user_optional)
 ):
     # Validar permisos de registro
-    if current_user is None and user.role != RoleEnum.paciente:
-        raise HTTPException(status_code=403, detail="Solo se permite el autoregistro como paciente")
-
-    if current_user and current_user["role"] != RoleEnum.super_admin:
-        raise HTTPException(status_code=403, detail="Solo el super_admin puede crear este tipo de usuarios")
-
+    if current_user:
+        if current_user["role"] == RoleEnum.administrativo:
+            if user.role != RoleEnum.paciente:
+                raise HTTPException(status_code=403, detail="Solo se puede registrar pacientes")
+        else:
+            if current_user["role"] != RoleEnum.super_admin:
+                raise HTTPException(status_code=403, detail="Solo el super_admin puede crear este tipo de usuarios")
+    
+    
+    
     # Validar si el usuario ya existe
     if session.exec(select(User).where(User.username == user.username)).first():
         raise HTTPException(status_code=400, detail="El nombre de usuario ya está en uso")

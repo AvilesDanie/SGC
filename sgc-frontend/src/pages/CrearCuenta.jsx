@@ -287,7 +287,7 @@ function CrearCuenta() {
               <h2 className="text-lg font-semibold text-teal-700 mb-4">Datos personales</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {[
-                  { id: "cedula", label: "Cédula", placeholder: "Ej. 0912345678" },
+                  { id: "cedula", label: "Cédula", placeholder: "Ej. 1712345678" },
                   { id: "nombre", label: "Nombre", placeholder: "Ej. Juan" },
                   { id: "apellido", label: "Apellido", placeholder: "Ej. Pérez" },
                   { id: "telefono", label: "Teléfono", placeholder: "Ej. 0991234567" },

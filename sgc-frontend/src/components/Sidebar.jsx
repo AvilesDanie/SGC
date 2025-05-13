@@ -18,7 +18,12 @@ const menusPorRol = {
   ],
   farmacologo: [
     { to: '/dashboard/stock', label: 'Stock de Medicamentos' },
-  ]
+  ],
+  administrativo: [
+    { to: '/dashboard/registro', label: 'Registro de Paciente' },
+    { to: '/dashboard/turno', label: 'Generar de Turnos' },
+    { to: '/dashboard/asistencia', label: 'Validar Asistencia' },
+  ],
 }
 
 function Sidebar({ role }) {
