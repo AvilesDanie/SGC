@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import Sidebar from '../components/Sidebar'
 
@@ -8,14 +9,23 @@ function ActualizarCuenta() {
     username: '',
     password: ''
   })
-
   const [mensaje, setMensaje] = useState('')
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true) // 👈 loader de validación
+  const navigate = useNavigate()
 
   useEffect(() => {
+    const token = localStorage.getItem('token')
     const storedRole = localStorage.getItem('role')
+
+    if (!token) {
+      navigate('/login', { replace: true })
+      return
+    }
+
     setRole(storedRole || '')
-  }, [])
+    setLoading(false)
+  }, [navigate])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -52,7 +62,7 @@ function ActualizarCuenta() {
       })
 
       localStorage.clear()
-      window.location.href = '/login'
+      window.location.replace('/login') // 👈 navegación limpia tras cambio
 
     } catch (err) {
       if (err.response?.status === 400) {
@@ -62,6 +72,8 @@ function ActualizarCuenta() {
       }
     }
   }
+
+  if (loading) return <div className="p-6">Cargando...</div>
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-white to-cyan-100">

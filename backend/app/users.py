@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, delete, or_, select
-from models import Cita, Especialidad, HorarioLaboral, User
+from models import Cita, Especialidad, EstadoCitaEnum, HorarioLaboral, User
 from schemas import CitaCreate, CitaRead, EstadoCita, ExtendedUserCreate, HorarioItem, UserCreate, Token, UserRead, UserUpdate
 from auth import get_password_hash, authenticate_user, create_access_token
 from database import get_session
@@ -468,7 +468,6 @@ def crear_cita(cita_data: CitaCreate, session: Session = Depends(get_session)):
     if not horario:
         raise HTTPException(status_code=400, detail="El médico no tiene horario ese día.")
 
-    # Convertir todo a objetos `datetime.time`
     def str_to_time(val):
         return time.fromisoformat(val) if isinstance(val, str) else val
 
@@ -486,3 +485,128 @@ def crear_cita(cita_data: CitaCreate, session: Session = Depends(get_session)):
     session.refresh(nueva_cita)
 
     return {"message": "Cita creada exitosamente", "cita_id": nueva_cita.id}
+
+
+
+
+
+
+
+
+
+
+
+@router.get("/citas/hoy", response_model=List[Cita])
+def obtener_citas_hoy(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role not in [
+        RoleEnum.super_admin,
+        RoleEnum.medico,
+        RoleEnum.administrativo,
+        RoleEnum.enfermero
+    ]:
+        raise HTTPException(status_code=403, detail="Acceso denegado")
+
+    hoy = date.today()
+
+    citas = session.exec(
+        select(Cita).where(Cita.fecha == hoy)
+    ).all()
+
+    return citas
+
+
+
+@router.put("/citas/{cita_id}/para-signos")
+def marcar_cita_para_signos(
+    cita_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role != RoleEnum.administrativo:
+        raise HTTPException(status_code=403, detail="Acceso denegado")
+
+    cita = session.get(Cita, cita_id)
+    if not cita:
+        raise HTTPException(status_code=404, detail="Cita no encontrada")
+
+    cita.estado = EstadoCitaEnum.para_signos
+    session.add(cita)
+    session.commit()
+
+    return {"message": "Cita actualizada a 'para signos' correctamente."}
+
+
+
+
+@router.get("/pacientes/{paciente_id}", response_model=UserRead)
+def obtener_paciente_por_id(
+    paciente_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    # Validar que el rol esté autorizado
+    if current_user.role not in [RoleEnum.super_admin, RoleEnum.medico, RoleEnum.enfermero, RoleEnum.administrativo, RoleEnum.farmacologo]:
+        raise HTTPException(status_code=403, detail="No autorizado para consultar pacientes.")
+
+    paciente = session.exec(
+        select(User).where(User.id == paciente_id, User.role == RoleEnum.paciente)
+    ).first()
+
+    if not paciente:
+        raise HTTPException(status_code=404, detail="Paciente no encontrado.")
+
+    return paciente
+
+
+
+
+
+
+@router.get("/medicos/{medico_id}", response_model=UserRead)
+def obtener_medico_por_id(
+    medico_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    # Validar roles permitidos
+    if current_user.role not in [RoleEnum.super_admin, RoleEnum.administrativo, RoleEnum.enfermero, RoleEnum.farmacologo, RoleEnum.medico]:
+        raise HTTPException(status_code=403, detail="No autorizado para consultar médicos.")
+
+    medico = session.exec(
+        select(User).where(User.id == medico_id, User.role == RoleEnum.medico)
+    ).first()
+
+    if not medico:
+        raise HTTPException(status_code=404, detail="Médico no encontrado.")
+
+    return medico
+
+
+
+
+
+
+@router.get("/medicos/{medico_id}/especialidad")
+def obtener_especialidad_medico(
+    medico_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    # Verificar permisos
+    if current_user.role not in [RoleEnum.super_admin, RoleEnum.administrativo, RoleEnum.enfermero, RoleEnum.farmacologo, RoleEnum.medico]:
+        raise HTTPException(status_code=403, detail="No autorizado.")
+
+    medico = session.exec(
+        select(User).where(User.id == medico_id, User.role == RoleEnum.medico)
+    ).first()
+
+    if not medico:
+        raise HTTPException(status_code=404, detail="Médico no encontrado.")
+
+    if not medico.especialidad:
+        return {"especialidad": None}
+
+    return {"especialidad": medico.especialidad.nombre}

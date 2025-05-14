@@ -64,7 +64,7 @@ function Sidebar({ role }) {
         <button
           onClick={() => {
             localStorage.clear()
-            window.location.href = '/login'
+            window.location.replace('/login')
           }}
           className="w-full bg-red-600 hover:bg-red-700 p-2 rounded text-sm font-semibold"
         >
