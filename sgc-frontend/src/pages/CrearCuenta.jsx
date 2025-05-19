@@ -3,14 +3,8 @@ import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 
-
 const rolesDisponibles = [
-  'medico',
-  'enfermero',
-  'administrativo',
-  'farmacologo',
-  'paciente',
-  'super_admin'
+  'medico', 'enfermero', 'administrativo', 'farmacologo', 'paciente', 'super_admin'
 ]
 
 const diasSemana = [
@@ -31,20 +25,29 @@ function CrearCuenta() {
     especialidad: '',
     horario: []
   })
+
+  const [errores, setErrores] = useState({})
   const [role, setRole] = useState('')
   const [especialidades, setEspecialidades] = useState([])
   const [usarOtraEspecialidad, setUsarOtraEspecialidad] = useState(false)
-  const [error, setError] = useState('')
-  const [mensaje, setMensaje] = useState('')
+  const [mensajeGlobal, setMensajeGlobal] = useState('')
   const navigate = useNavigate()
+  const [touched, setTouched] = useState({
+    fecha_nacimiento: true
+  })
+  const [modalAbierto, setModalAbierto] = useState(false)
+
+
+
+
+
 
   useEffect(() => {
+
+
     const role = localStorage.getItem('role')
     setRole(role || '')
-
-    if (role !== 'super_admin') {
-      navigate('/dashboard')
-    }
+    if (role !== 'super_admin') navigate('/dashboard')
 
     axios.get('http://localhost:8000/especialidades')
       .then(res => setEspecialidades(res.data))
@@ -52,31 +55,196 @@ function CrearCuenta() {
   }, [])
 
 
+  const validarCedulaEcuatoriana = (cedula) => {
+    if (!/^\d{10}$/.test(cedula)) return false
+    const provincia = parseInt(cedula.substring(0, 2))
+    const tercerDigito = parseInt(cedula[2])
+    if (provincia < 1 || provincia > 24 || tercerDigito >= 6) return false
+    const coef = [2, 1, 2, 1, 2, 1, 2, 1, 2]
+    let suma = 0
+    for (let i = 0; i < 9; i++) {
+      let val = parseInt(cedula[i]) * coef[i]
+      if (val >= 10) val -= 9
+      suma += val
+    }
+    const verificador = (10 - (suma % 10)) % 10
+    return verificador === parseInt(cedula[9])
+  }
+
+  const validarCampo = (name, value) => {
+    const hoy = new Date()
+    const fechaActual = hoy.toISOString().split('T')[0]
+    switch (name) {
+      case 'cedula':
+        if (!value) return 'La cédula es obligatoria.'
+        if (!/^\d{10}$/.test(value)) return 'Debe tener 10 dígitos.'
+        if (!validarCedulaEcuatoriana(value)) return 'Cédula no válida en Ecuador.'
+        return ''
+      case 'nombre':
+      case 'apellido':
+        if (!value) return `El ${name} es obligatorio.`
+        if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(value)) return 'Solo letras y espacios.'
+        return ''
+      case 'fecha_nacimiento': {
+        if (!value && touched.fecha_nacimiento) return 'La fecha es obligatoria.'
+        if (value > fechaActual) return 'No puede ser futura.'
+
+        const nacimiento = new Date(value)
+        const hoy = new Date()
+        let edad = hoy.getFullYear() - nacimiento.getFullYear()
+        const m = hoy.getMonth() - nacimiento.getMonth()
+        const d = hoy.getDate() - nacimiento.getDate()
+
+        if (m < 0 || (m === 0 && d < 0)) edad--
+
+        if (edad > 120) return 'Edad no puede ser mayor a 120 años.'
+        if (form.role !== 'paciente' && edad < 22) return 'Edad no puede ser menor a 22 años.'
+        return ''
+      }
+
+      case 'telefono':
+        if (!value) return 'El teléfono es obligatorio.'
+        if (!/^09\d{8}$/.test(value)) return 'Debe comenzar con 09 y tener 10 dígitos.'
+        return ''
+      case 'direccion':
+        if (!value) return 'La dirección es obligatoria.'
+        return ''
+      case 'username':
+        if (!value) return 'Usuario obligatorio.'
+        if (/\s/.test(value)) return 'Sin espacios.'
+        if (value.length < 4) return 'Debe tener al menos 4 caracteres.'
+        return ''
+
+      case 'password':
+        if (!value) return 'Contraseña obligatoria.'
+        if (/\s/.test(value)) return 'Sin espacios.'
+        if (value.length < 4) return 'Debe tener al menos 4 caracteres.'
+        return ''
+
+      case 'especialidad':
+        if (form.role === 'medico') {
+          if (!value) return 'Especialidad obligatoria.'
+          if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(value)) return 'Solo letras.'
+        }
+        return ''
+      default:
+        return ''
+    }
+  }
+
   const handleChange = (e) => {
     const { name, value } = e.target
     setForm(prev => ({ ...prev, [name]: value }))
+
+    const error = validarCampo(name, value)
+    setErrores(prev => ({ ...prev, [name]: error }))
+
+    // Validar duplicados si es cédula, teléfono o username
+    if (['cedula', 'telefono', 'username'].includes(name) && value.length >= 3) {
+      const token = localStorage.getItem('token')  // ✅ Obtener token de forma segura
+
+      if (!token) {
+        console.warn('Token no disponible, no se puede validar duplicado')
+        return
+      }
+
+      axios.get('http://localhost:8000/usuarios', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => {
+          const duplicado = res.data.find(u => u[name] === value)
+
+          if (duplicado) {
+            const mismoRolEsPaciente = form.role === 'paciente' || duplicado.role === 'paciente'
+            const ambosSonPacientes = form.role === 'paciente' && duplicado.role === 'paciente'
+
+            if (!mismoRolEsPaciente || ambosSonPacientes) {
+              setErrores(prev => ({
+                ...prev,
+                [name]: `${name[0].toUpperCase() + name.slice(1)} ya está registrado para otro usuario.`
+              }))
+            }
+          }
+        })
+        .catch(err => {
+          console.error('Error validando duplicado:', err)
+        })
+    }
+
   }
 
-  const handleRoleChange = (e) => {
-    const role = e.target.value
-    setForm({
-      username: '',
-      password: '',
-      nombre: '',
-      apellido: '',
-      fecha_nacimiento: '',
-      direccion: '',
-      telefono: '',
-      cedula: '',
-      role,
-      especialidad: '',
-      horario: []
-    })
+
+  const handleRoleChange = async (e) => {
+    const nuevoRol = e.target.value
+
+    setForm(prev => ({ ...prev, role: nuevoRol, especialidad: '', horario: [] }))
     setUsarOtraEspecialidad(false)
 
-    setError('')
-    setMensaje('')
+    // Revalidar fecha_nacimiento con el nuevo rol
+    const errorFecha = (() => {
+      const hoy = new Date()
+      const fechaActual = hoy.toISOString().split('T')[0]
+      const value = form.fecha_nacimiento
+      if (value > fechaActual) return 'No puede ser futura.'
+
+      const nacimiento = new Date(value)
+      let edad = hoy.getFullYear() - nacimiento.getFullYear()
+      const m = hoy.getMonth() - nacimiento.getMonth()
+      const d = hoy.getDate() - nacimiento.getDate()
+      if (m < 0 || (m === 0 && d < 0)) edad--
+
+      if (edad > 120) return 'Edad no puede ser mayor a 120 años.'
+      if (nuevoRol !== 'paciente' && edad < 22) return 'Edad no puede ser menor a 22 años.'
+      return ''
+    })()
+
+    const token = localStorage.getItem('token')
+    const campos = ['cedula', 'telefono', 'username']
+    const nuevosErrores = {} // ✅ Mover esta línea aquí
+
+    if (token) {
+      try {
+        const res = await axios.get('http://localhost:8000/usuarios', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+
+        for (const campo of campos) {
+          const valor = form[campo]
+          if (valor?.length >= 3) {
+            const duplicado = res.data.find(u => u[campo] === valor)
+
+            if (duplicado) {
+              const unoEsPaciente = nuevoRol === 'paciente' || duplicado.role === 'paciente'
+              const ambosPacientes = nuevoRol === 'paciente' && duplicado.role === 'paciente'
+
+              if (!unoEsPaciente || ambosPacientes) {
+                nuevosErrores[campo] = `${campo[0].toUpperCase() + campo.slice(1)} ya está registrado para otro usuario.`
+              } else {
+                // ✅ Limpia el error si ya no aplica
+                nuevosErrores[campo] = ''
+              }
+            } else {
+              // ✅ Si no hay duplicado, también limpia el error
+              nuevosErrores[campo] = ''
+            }
+          }
+        }
+
+      } catch (err) {
+        console.warn('Error validando duplicados al cambiar rol:', err)
+      }
+    }
+
+    setErrores(prev => ({
+      ...prev,
+      ...nuevosErrores,
+      especialidad: '',
+      fecha_nacimiento: errorFecha
+    }))
   }
+
+
+
 
   const handleEspecialidadChange = (e) => {
     const value = e.target.value
@@ -87,157 +255,168 @@ function CrearCuenta() {
       setUsarOtraEspecialidad(false)
       setForm(prev => ({ ...prev, especialidad: value }))
     }
+    const error = validarCampo('especialidad', value)
+    setErrores(prev => ({ ...prev, especialidad: error }))
   }
 
   const updateHorario = (dia, campo, valor) => {
-    setForm((prev) => {
-      const existente = prev.horario.find(h => h.dia === dia)
-      let nuevoHorario
-      if (existente) {
-        nuevoHorario = prev.horario.map(h =>
-          h.dia === dia ? { ...h, [campo]: valor } : h
-        )
+  setForm(prev => {
+    const existente = prev.horario.find(h => h.dia === dia)
+    const horarioActualizado = existente
+      ? prev.horario.map(h => h.dia === dia ? { ...h, [campo]: valor } : h)
+      : [...prev.horario, { dia, [campo]: valor }]
+
+    validarHorarioPorDia(dia, horarioActualizado.find(h => h.dia === dia))
+
+    // 👉 Validación general dinámica de todos los horarios
+    if (form.role !== 'paciente') {
+      const { horariosValidos } = calcularHorariosValidos(horarioActualizado)
+      if (horariosValidos === 0) {
+        setMensajeGlobal('Debe asignar al menos un horario válido.')
       } else {
-        nuevoHorario = [...prev.horario, { dia, [campo]: valor }]
+        setMensajeGlobal('')
       }
-      return { ...prev, horario: nuevoHorario }
-    })
+    }
+
+    return { ...prev, horario: horarioActualizado }
+  })
+}
+
+
+  const validarHorarioPorDia = (dia, horario) => {
+    const { hora_inicio, hora_fin } = horario || {}
+
+    let error = ''
+    if (hora_inicio && hora_fin) {
+      if (hora_inicio >= hora_fin) {
+        error = 'Hora fin debe ser posterior a hora inicio.'
+      }
+    } else if (hora_inicio || hora_fin) {
+      error = 'Ambas horas deben estar completas.'
+    }
+
+    setErrores(prev => ({
+      ...prev,
+      horario: {
+        ...prev.horario,
+        [dia]: error
+      }
+    }))
   }
+
+
+
+  const limpiarCampoHorario = (dia, campo) => {
+  setForm(prev => {
+    const nuevoHorario = prev.horario.map(h => {
+      if (h.dia === dia) {
+        const limpio = { ...h, [campo]: '' }
+        if (!limpio.hora_inicio && !limpio.hora_fin) return null
+        return limpio
+      }
+      return h
+    }).filter(Boolean)
+
+    // Validación dinámica
+    if (form.role !== 'paciente') {
+      const { horariosValidos } = calcularHorariosValidos(nuevoHorario)
+      if (horariosValidos === 0) {
+        setMensajeGlobal('Debe asignar al menos un horario válido.')
+      } else {
+        setMensajeGlobal('')
+      }
+    }
+
+    return { ...prev, horario: nuevoHorario }
+  })
+}
+
+
+  const calcularHorariosValidos = (horarios) => {
+  let horariosValidos = 0
+  let erroresHorario = {}
+
+  diasSemana.forEach((dia) => {
+    const horarioDia = horarios.find(h => h.dia === dia)
+    if (horarioDia) {
+      const { hora_inicio, hora_fin } = horarioDia
+      if (hora_inicio && hora_fin) {
+        if (hora_inicio < hora_fin) {
+          horariosValidos++
+        } else {
+          erroresHorario[dia] = 'Hora fin debe ser posterior a hora inicio.'
+        }
+      } else if (hora_inicio || hora_fin) {
+        erroresHorario[dia] = 'Ambas horas deben estar completas.'
+      }
+    }
+  })
+
+  return { horariosValidos, erroresHorario }
+}
+
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setError('')
-    setMensaje('')
+    setMensajeGlobal('')
 
-    // Validar campos obligatorios
-    const { cedula, nombre, apellido, fecha_nacimiento, direccion, telefono, username, password } = form
+    let nuevosErrores = {}
+    Object.entries(form).forEach(([key, value]) => {
+      const msg = validarCampo(key, value)
+      if (msg) nuevosErrores[key] = msg
+    })
+    setErrores(prev => ({
+      ...prev,
+      ...nuevosErrores,
+      horario: prev.horario // preserva errores de horario
+    }))
 
-    if (!cedula || !nombre || !apellido || !fecha_nacimiento || !direccion || !telefono || !username || !password) {
-      setError('Todos los campos son obligatorios.')
-      return
-    }
 
-    // Validar cédula ecuatoriana
-    const validarCedulaEcuatoriana = (cedula) => {
-      if (!/^\d{10}$/.test(cedula)) return false
-      const provincia = parseInt(cedula.substring(0, 2))
-      const tercerDigito = parseInt(cedula[2])
-      if (provincia < 1 || provincia > 24 || tercerDigito >= 6) return false
-      const coeficientes = [2, 1, 2, 1, 2, 1, 2, 1, 2]
-      let suma = 0
-      for (let i = 0; i < 9; i++) {
-        let val = parseInt(cedula[i]) * coeficientes[i]
-        if (val >= 10) val -= 9
-        suma += val
-      }
-      const digitoVerificador = (10 - (suma % 10)) % 10
-      return digitoVerificador === parseInt(cedula[9])
-    }
-
-    if (!validarCedulaEcuatoriana(cedula)) {
-      setError('La cédula ingresada no es válida en Ecuador.')
-      return
-    }
-
-    // Validar nombre y apellido
-    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(nombre)) {
-      setError('El nombre no puede contener caracteres especiales ni números.')
-      return
-    }
-    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(apellido)) {
-      setError('El apellido no puede contener caracteres especiales ni números.')
-      return
-    }
-
-    // Validar fecha de nacimiento
-    const fechaActual = new Date().toISOString().split('T')[0]
-    if (fecha_nacimiento > fechaActual) {
-      setError('La fecha de nacimiento no puede ser futura.')
-      return
-    }
-
-    // Validar edad mínima (22 años) para roles distintos a paciente
     if (form.role !== 'paciente') {
-      const hoy = new Date()
-      const nacimiento = new Date(fecha_nacimiento)
-      const edad = hoy.getFullYear() - nacimiento.getFullYear()
-      const mesDiferencia = hoy.getMonth() - nacimiento.getMonth()
-      const diaDiferencia = hoy.getDate() - nacimiento.getDate()
-      const edadFinal = mesDiferencia < 0 || (mesDiferencia === 0 && diaDiferencia < 0) ? edad - 1 : edad
+      let horariosValidos = 0
+      let erroresHorario = {}
 
-      if (edadFinal < 22) {
-        setError('Los usuarios con rol distinto a paciente deben tener al menos 22 años.')
-        return
-      }
-    }
+      diasSemana.forEach((dia) => {
+        const horarioDia = form.horario.find(h => h.dia === dia)
+        if (horarioDia) {
+          const { hora_inicio, hora_fin } = horarioDia
+          if (hora_inicio && hora_fin) {
+            if (hora_inicio < hora_fin) {
+              horariosValidos++
+            } else {
+              erroresHorario[dia] = 'Hora fin debe ser posterior a hora inicio.'
+            }
+          } else if (hora_inicio || hora_fin) {
+            erroresHorario[dia] = 'Ambas horas deben estar completas.'
+          }
+        }
+      })
 
-
-    // Validar teléfono
-    if (!/^09\d{8}$/.test(telefono)) {
-      setError('El teléfono debe iniciar con 09 y tener exactamente 10 dígitos.')
-      return
-    }
-
-    // Validar username y password sin espacios
-    if (/\s/.test(username)) {
-      setError('El nombre de usuario no debe contener espacios.')
-      return
-    }
-    if (/\s/.test(password)) {
-      setError('La contraseña no debe contener espacios.')
-      return
-    }
-
-    // Validaciones específicas para médico
-    if (form.role === 'medico') {
-      if (!form.especialidad.trim()) {
-        setError('Debe ingresar una especialidad.')
-        return
+      if (horariosValidos === 0) {
+        setMensajeGlobal('Debe asignar al menos un horario válido.')
       }
 
-      if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(form.especialidad)) {
-        setError('La especialidad no puede contener caracteres especiales ni números.')
-        return
-      }
+      setErrores(prev => ({
+        ...prev,
+        horario: erroresHorario
+      }))
 
-      const horariosValidos = form.horario.filter(
-        h => h.hora_inicio && h.hora_fin && h.hora_inicio < h.hora_fin
-      )
-      if (horariosValidos.length === 0) {
-        setError('El médico debe tener al menos un día con horario válido.')
-        return
-      }
     }
+    if (Object.keys(nuevosErrores).length > 0) return
 
-    // Enviar solicitud
+
     try {
       const token = localStorage.getItem('token')
-
-      const payload = {
-        username: form.username,
-        password: form.password,
-        nombre: form.nombre,
-        apellido: form.apellido,
-        fecha_nacimiento: form.fecha_nacimiento,
-        direccion: form.direccion,
-        telefono: form.telefono,
-        cedula: form.cedula,
-        role: form.role
-      }
-
-      if (form.role === 'medico') {
-        payload.especialidad = form.especialidad
-      }
-
-      if (form.role !== 'paciente') {
-        payload.horario = form.horario
-      }
+      const payload = { ...form }
+      if (form.role !== 'paciente') payload.horario = form.horario
+      if (form.role !== 'medico') delete payload.especialidad
 
       await axios.post('http://localhost:8000/register', payload, {
         headers: { Authorization: `Bearer ${token}` }
       })
 
-      setMensaje('Usuario creado exitosamente.')
+      setModalAbierto(true)
+
       setForm({
         username: '',
         password: '',
@@ -251,174 +430,201 @@ function CrearCuenta() {
         especialidad: '',
         horario: []
       })
-      // o reinicia todo
+      setTouched({
+        fecha_nacimiento: true
+      })
+
+
+      setErrores({})
     } catch (err) {
-      setError('Error al crear el usuario. Verifica los datos.')
+      setMensajeGlobal('Error al crear el usuario.')
     }
   }
-
-  const [modalVisible, setModalVisible] = useState(false)
-  const [modalContent, setModalContent] = useState({ tipo: '', mensaje: '' })
-
-  useEffect(() => {
-    if (mensaje) {
-      setModalContent({ tipo: 'success', mensaje })
-      setModalVisible(true)
-    }
-    if (error) {
-      setModalContent({ tipo: 'error', mensaje: error })
-      setModalVisible(true)
-    }
-  }, [mensaje, error])
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-white to-cyan-100">
       <Sidebar role={role} />
-
       <div className="flex-1 ml-64 p-8 overflow-y-auto">
         <div className="bg-white shadow-xl rounded-xl p-8 max-w-3xl mx-auto">
           <h1 className="text-3xl font-bold text-teal-800 mb-6 text-center">Crear nueva cuenta</h1>
 
-
-
           <form onSubmit={handleSubmit} className="space-y-8">
-            {/* === DATOS PERSONALES === */}
-            <div>
-              <h2 className="text-lg font-semibold text-teal-700 mb-4">Datos personales</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {[
-                  { id: "cedula", label: "Cédula", placeholder: "Ej. 1712345678" },
-                  { id: "nombre", label: "Nombre", placeholder: "Ej. Juan" },
-                  { id: "apellido", label: "Apellido", placeholder: "Ej. Pérez" },
-                  { id: "telefono", label: "Teléfono", placeholder: "Ej. 0991234567" },
-                  { id: "direccion", label: "Dirección", placeholder: "Ej. Av. Siempre Viva 123" },
-                  { id: "fecha_nacimiento", label: "Fecha de nacimiento", type: "date", placeholder: "" }
-                ].map((field) => (
-                  <div key={field.id} className="flex flex-col">
-                    <label htmlFor={field.id} className="text-gray-700 font-medium mb-1">
-                      {field.label}
-                    </label>
-                    <input
-                      id={field.id}
-                      name={field.id}
-                      type={field.type || "text"}
-                      placeholder={field.placeholder}
-                      value={form[field.id]}
-                      onChange={handleChange}
-                      className="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
-                    />
-                  </div>
-                ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {[
+                { id: "cedula", label: "Cédula", placeholder: "1712345678" },
+                { id: "nombre", label: "Nombre", placeholder: "Juan" },
+                { id: "apellido", label: "Apellido", placeholder: "Pérez" },
+                { id: "telefono", label: "Teléfono", placeholder: "0991234567" },
+                { id: "direccion", label: "Dirección", placeholder: "Av. Siempre Viva" },
+              ].map((field) => (
+                <div key={field.id} className="flex flex-col">
+                  <label htmlFor={field.id} className="text-gray-700 font-medium">{field.label}</label>
+                  <input
+                    id={field.id}
+                    name={field.id}
+                    type={field.type || "text"}
+                    placeholder={field.placeholder}
+                    value={form[field.id]}
+                    onChange={handleChange}
+                    className="border rounded px-4 py-2"
+                  />
+                  {errores[field.id] && (
+                    <span className="text-red-500 text-sm">{errores[field.id]}</span>
+                  )}
+
+
+                </div>
+              ))}
+              <div className="flex flex-col">
+                <label htmlFor="fecha_nacimiento" className="text-gray-700 font-medium">Fecha de nacimiento</label>
+                <input
+                  id="fecha_nacimiento"
+                  name="fecha_nacimiento"
+                  type="date"
+                  value={form.fecha_nacimiento}
+                  onChange={handleChange}
+                  onBlur={() => setTouched(prev => ({ ...prev, fecha_nacimiento: true }))}
+                  className="border rounded px-4 py-2"
+                />
+                {errores.fecha_nacimiento && touched.fecha_nacimiento && (
+                  <span className="text-red-500 text-sm">{errores.fecha_nacimiento}</span>
+                )}
+              </div>
+
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="flex flex-col">
+                <label className="text-gray-700 font-medium">Rol</label>
+                <select name="role" value={form.role} onChange={handleRoleChange} className="border rounded px-4 py-2">
+                  {rolesDisponibles.map(r => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col">
+                <label className="text-gray-700 font-medium">Usuario</label>
+                <input
+                  name="username"
+                  value={form.username}
+                  onChange={handleChange}
+                  className="border rounded px-4 py-2"
+                />
+                {errores.username && <span className="text-red-500 text-sm">{errores.username}</span>}
+              </div>
+
+              <div className="flex flex-col">
+                <label className="text-gray-700 font-medium">Contraseña</label>
+                <input
+                  type="password"
+                  name="password"
+                  value={form.password}
+                  onChange={handleChange}
+                  className="border rounded px-4 py-2"
+                />
+                {errores.password && <span className="text-red-500 text-sm">{errores.password}</span>}
               </div>
             </div>
 
-            {/* === CREDENCIALES Y ROL === */}
-            <div>
-              <h2 className="text-lg font-semibold text-teal-700 mb-4">Rol y credenciales</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="flex flex-col">
-                  <label htmlFor="role" className="text-gray-700 font-medium mb-1">Rol</label>
-                  <select
-                    id="role"
-                    name="role"
-                    value={form.role}
-                    onChange={handleRoleChange}
-                    className="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
-                  >
-                    {rolesDisponibles.map((r, i) => <option key={i} value={r}>{r}</option>)}
-                  </select>
-                </div>
-
-                <div className="flex flex-col">
-                  <label htmlFor="username" className="text-gray-700 font-medium mb-1">Usuario</label>
-                  <input
-                    id="username"
-                    name="username"
-                    placeholder="Ej. juanperez"
-                    value={form.username}
-                    onChange={handleChange}
-                    className="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
-                  />
-                </div>
-
-                <div className="flex flex-col">
-                  <label htmlFor="password" className="text-gray-700 font-medium mb-1">Contraseña</label>
-                  <input
-                    id="password"
-                    type="password"
-                    name="password"
-                    placeholder="Ej. ********"
-                    value={form.password}
-                    onChange={handleChange}
-                    className="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Especialidad */}
             {form.role === 'medico' && (
-              <>
-              <h2 className="text-lg font-semibold text-teal-700 mb-4">Especialidad</h2>
-
-                <select onChange={handleEspecialidadChange} className="input">
+              <div className="flex flex-col">
+                <label className="text-gray-700 font-medium">Especialidad</label>
+                <select onChange={handleEspecialidadChange} className="border rounded px-4 py-2">
                   <option value="">Seleccionar especialidad</option>
-                  {especialidades.map((e) => <option key={e.id} value={e.nombre}>{e.nombre}</option>)}
+                  {especialidades.map(e => (
+                    <option key={e.id} value={e.nombre}>{e.nombre}</option>
+                  ))}
                   <option value="__otra__">Otra...</option>
                 </select>
                 {usarOtraEspecialidad && (
-                  <input name="especialidad" placeholder="Nueva especialidad" value={form.especialidad} onChange={handleChange} className="input" />
+                  <input
+                    name="especialidad"
+                    value={form.especialidad}
+                    onChange={handleChange}
+                    className="border rounded px-4 py-2 mt-2"
+                    placeholder="Nueva especialidad"
+                  />
                 )}
-              </>
+                {errores.especialidad && <span className="text-red-500 text-sm">{errores.especialidad}</span>}
+              </div>
             )}
 
-            {/* Horarios */}
             {form.role !== 'paciente' && (
-              <>
-                <h3 className="text-lg font-semibold mt-6 text-teal-700">Horario laboral</h3>
-                {diasSemana.map((dia, i) => (
-                  <div key={i} className="flex items-center space-x-2 mb-2">
-                    <label className="w-24 capitalize text-gray-600">{dia}</label>
-                    <input type="time" onChange={(e) => updateHorario(dia, 'hora_inicio', e.target.value)} className="input-time" />
-                    <span>-</span>
-                    <input type="time" onChange={(e) => updateHorario(dia, 'hora_fin', e.target.value)} className="input-time" />
-                  </div>
-                ))}
-              </>
-            )}
+              <div>
+                <h3 className="text-lg font-semibold text-teal-700 mb-2">Horario laboral</h3>
+                {diasSemana.map((dia, i) => {
+                  const horarioDia = form.horario.find(h => h.dia === dia) || {}
+                  const errorDia = errores.horario?.[dia]
+                  return (
+                    <div key={i} className="mb-2">
+                      <div className="flex items-center space-x-2">
+                        <label className="w-24 capitalize text-gray-600">{dia}</label>
 
-            <button type="submit" className="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2 rounded-lg transition duration-200">
+                        <div className="flex items-center space-x-1">
+                          <input
+                            type="time"
+                            value={horarioDia.hora_inicio || ''}
+                            onChange={(e) => updateHorario(dia, 'hora_inicio', e.target.value)}
+                            className="border px-2 py-1 rounded"
+                          />
+                          {horarioDia.hora_inicio && (
+                            <button type="button" onClick={() => limpiarCampoHorario(dia, 'hora_inicio')} className="text-red-500 text-sm">X</button>
+                          )}
+                        </div>
+
+                        <span>-</span>
+
+                        <div className="flex items-center space-x-1">
+                          <input
+                            type="time"
+                            value={horarioDia.hora_fin || ''}
+                            onChange={(e) => updateHorario(dia, 'hora_fin', e.target.value)}
+                            className="border px-2 py-1 rounded"
+                          />
+                          {horarioDia.hora_fin && (
+                            <button type="button" onClick={() => limpiarCampoHorario(dia, 'hora_fin')} className="text-red-500 text-sm">X</button>
+                          )}
+                        </div>
+                      </div>
+                      {errorDia && (
+                        <div className="ml-24 text-red-500 text-sm">{errorDia}</div>
+                      )}
+                    </div>
+                  )
+                })}
+
+
+              </div>
+            )}{mensajeGlobal && (
+              <div className={`text-center mb-4 text-sm font-semibold ${mensajeGlobal.includes('exitosamente') ? 'text-green-600' : 'text-red-600'}`}>
+                {mensajeGlobal}
+              </div>
+            )}
+            
+            <button type="submit" className="w-full bg-teal-600 text-white py-2 rounded hover:bg-teal-700">
               Crear cuenta
             </button>
           </form>
+          
         </div>
       </div>
-
-
-      {/* Mensajes de estado */}
-      {modalVisible && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
-          <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
-            <h3 className={`text-xl font-bold mb-2 ${modalContent.tipo === 'error' ? 'text-red-600' : 'text-green-600'}`}>
-              {modalContent.tipo === 'error' ? 'Error' : 'Éxito'}
-            </h3>
-            <p className="text-gray-700 mb-4">{modalContent.mensaje}</p>
-            <div className="text-right">
-              <button
-                onClick={() => setModalVisible(false)}
-                className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded"
-              >
-                Cerrar
-              </button>
-            </div>
+      {modalAbierto && (
+        <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full text-center">
+            <h2 className="text-2xl font-bold text-green-600 mb-4">¡Éxito!</h2>
+            <p className="text-gray-700 mb-6">El usuario fue creado exitosamente.</p>
+            <button
+              onClick={() => setModalAbierto(false)}
+              className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded"
+            >
+              Cerrar
+            </button>
           </div>
         </div>
       )}
 
-
     </div>
-
-
   )
 }
 

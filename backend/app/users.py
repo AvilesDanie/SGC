@@ -34,6 +34,7 @@ from dependencies import get_current_user
 from auth import get_password_hash
 from database import get_session
 from datetime import time
+from schemas import AccountUpdate  # importa el nuevo esquema
 
 
 router = APIRouter()
@@ -172,7 +173,8 @@ def register_user(
 def login(form_data: OAuth2PasswordRequestForm = Depends(), session: Session = Depends(get_session)):
     user = authenticate_user(session, form_data.username, form_data.password)
     if not user:
-        raise HTTPException(status_code=401, detail="Credenciales inválidas")
+        raise HTTPException(status_code=401, detail="Credenciales inválidas o usuario inactivo")
+    
     access_token = create_access_token(
         data={"sub": user.username, "role": user.role},
         expires_delta=timedelta(minutes=30)
@@ -206,7 +208,6 @@ def obtener_especialidades(session: Session = Depends(get_session)):
 
 
 
-from schemas import AccountUpdate  # importa el nuevo esquema
 
 @router.put("/update-account")
 def update_account(
@@ -237,7 +238,7 @@ def listar_usuarios(
         raise HTTPException(status_code=403, detail="Acceso denegado")
 
     usuarios = session.exec(
-        select(User).options(joinedload(User.especialidad))
+        select(User).where(User.is_active == True).options(joinedload(User.especialidad))
     ).all()
 
     usuarios_read = []
@@ -347,9 +348,11 @@ def eliminar_usuario(
     session.exec(delete(HorarioLaboral).where(HorarioLaboral.user_id == user_id))
     session.commit()
 
-    session.delete(usuario)
+    usuario.is_active = False
+    session.add(usuario)
     session.commit()
-    return {"message": "Usuario eliminado correctamente"}
+    return {"message": "Usuario desactivado correctamente"}
+
 
 
 
