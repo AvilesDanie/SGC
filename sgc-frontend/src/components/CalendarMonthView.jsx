@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react'
+import { format } from 'date-fns'
+
 import {
   addMonths,
-  addYears,
-  format,
   startOfMonth,
   endOfMonth,
   eachDayOfInterval,
   startOfWeek,
   endOfWeek,
-  isBefore
+  isBefore,
+  isSameDay
 } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -31,7 +32,10 @@ function CalendarMonthView({ medico, citas, onSelectDay }) {
 
   const getDiaEstado = (fecha) => {
     const hoy = new Date()
-    if (isBefore(fecha, hoy)) return null
+    hoy.setHours(0, 0, 0, 0) // Normalizamos hora de hoy
+    fecha.setHours(0, 0, 0, 0)
+
+    if (isBefore(fecha, hoy)) return null // Bloqueamos días pasados (sin color y deshabilitados)
 
     const diaNombre = normalizar(
       fecha.toLocaleDateString('es-EC', { weekday: 'long' })
@@ -58,10 +62,12 @@ function CalendarMonthView({ medico, citas, onSelectDay }) {
     return 'bg-yellow-400'
   }
 
+
   return (
     <div className="space-y-8">
       {meses.map((mes, i) => {
         const hoy = new Date()
+        hoy.setHours(0, 0, 0, 0)
         const inicioMes = i === 0 ? hoy : startOfMonth(mes)
         const finMes = endOfMonth(mes)
 
@@ -81,17 +87,22 @@ function CalendarMonthView({ medico, citas, onSelectDay }) {
               ))}
 
               {dias.map(dia => {
-                const color = getDiaEstado(dia)
+                const color = getDiaEstado(new Date(dia))
                 const esDelMes = dia.getMonth() === mes.getMonth()
+
+                const hoy = new Date()
+                hoy.setHours(0, 0, 0, 0)
+                dia.setHours(0, 0, 0, 0)
+
+                const esFuturoOHoy = !isBefore(dia, hoy)
 
                 return (
                   <button
                     key={dia}
                     onClick={() => onSelectDay(dia)}
-                    disabled={!esDelMes}
-                    className={`aspect-square rounded ${
-                      color || 'bg-gray-200'
-                    } ${!esDelMes ? 'opacity-40 cursor-default' : 'hover:opacity-80'}`}
+                    disabled={!esDelMes || !esFuturoOHoy}
+                    className={`aspect-square rounded ${color || 'bg-gray-200'
+                      } ${!esDelMes || !esFuturoOHoy ? 'opacity-40 cursor-default' : 'hover:opacity-80'}`}
                     title={format(dia, 'PPP', { locale: es })}
                   >
                     {format(dia, 'd')}

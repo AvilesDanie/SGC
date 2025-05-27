@@ -83,6 +83,23 @@ function ValidarAsistencia() {
     }
   }
 
+  useEffect(() => {
+    const ws = new WebSocket("ws://localhost:8000/ws/estado-citas")
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data)
+      if (data.evento === "actualizacion_citas") {
+        cargarCitas() // recarga las citas cuando hay cambios
+      }
+    }
+
+    ws.onclose = () => console.log("WebSocket cerrado")
+    ws.onerror = (err) => console.error("WebSocket error", err)
+
+    return () => ws.close()
+  }, [])
+
+
   const filtrar = (cita) => {
     const paciente = pacientes[cita.paciente_id]
     const medico = medicos[cita.medico_id]
@@ -151,10 +168,14 @@ function ValidarAsistencia() {
         </div>
 
         <div className="space-y-4">
-          {citas.filter(filtrar).map(cita => {
-            const paciente = pacientes[cita.paciente_id]
-            const medico = medicos[cita.medico_id]
-            const especialidad = especialidades[cita.medico_id]
+          {([...citas].sort((a, b) => {
+            if (a.estado === 'agendado' && b.estado !== 'agendado') return -1;
+            if (a.estado !== 'agendado' && b.estado === 'agendado') return 1;
+            return 0;
+          })).filter(filtrar).map(cita => {
+            const paciente = pacientes[cita.paciente_id];
+            const medico = medicos[cita.medico_id];
+            const especialidad = especialidades[cita.medico_id];
 
             return (
               <div
@@ -179,6 +200,7 @@ function ValidarAsistencia() {
             )
           })}
         </div>
+
       </div>
     </div>
   )

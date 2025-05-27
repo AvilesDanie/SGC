@@ -7,7 +7,8 @@ import ActualizarCuenta from './pages/ActualizarCuenta'
 import GestionUsuarios from './pages/GestionUsuarios'
 import GenerarTurno from './pages/GenerarTurno'
 import ValidarAsistencia from './pages/ValidarAsistencia'
-import PrivateRoute from './components/PrivateRoute' // 👈 importa aquí
+import SignosVitales from './pages/SignosVitales'
+import PrivateRoute from './components/PrivateRoute'
 
 function App() {
   return (
@@ -69,6 +70,14 @@ function App() {
         element={
           <PrivateRoute>
             <ValidarAsistencia />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/dashboard/signosvitales"
+        element={
+          <PrivateRoute>
+            <SignosVitales />
           </PrivateRoute>
         }
       />

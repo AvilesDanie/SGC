@@ -10,7 +10,7 @@ const menusPorRol = {
     { to: '/dashboard/expedientes', label: 'Ver Expedientes' },
   ],
   enfermero: [
-    { to: '/dashboard/signos-vitales', label: 'Registrar Signos Vitales' },
+    { to: '/dashboard/signosvitales', label: 'Registrar Signos Vitales' },
   ],
   paciente: [
     { to: '/dashboard/historial', label: 'Mi Historial' },

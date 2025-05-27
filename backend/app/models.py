@@ -66,9 +66,9 @@ class HorarioLaboral(SQLModel, table=True):
 # Enum para estado de la cita
 class EstadoCitaEnum(str, Enum):
     agendado = "agendado"
-    para_signos = "para signos"
-    en_espera = "en espera"
-    en_consulta = "en consulta"
+    para_signos = "para_signos"
+    en_espera = "en_espera"
+    en_consulta = "en_consulta"
     terminado = "terminado"
     perdida = "perdida"
 
@@ -83,3 +83,18 @@ class Cita(SQLModel, table=True):
     hora_fin: time
 
     estado: EstadoCitaEnum = Field(default=EstadoCitaEnum.agendado)
+    signos_vitales: Optional["SignosVitales"] = Relationship(back_populates="cita")
+
+
+
+class SignosVitales(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    cita_id: int = Field(foreign_key="cita.id")  # Asociado a la cita
+
+    presion_arterial: str
+    peso: float
+    talla: float
+    temperatura: float
+    saturacion_oxigeno: float
+    cita: Optional["Cita"] = Relationship(back_populates="signos_vitales")
+

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, delete, or_, select
-from models import Cita, Especialidad, EstadoCitaEnum, HorarioLaboral, User
-from schemas import CitaCreate, CitaRead, EstadoCita, ExtendedUserCreate, HorarioItem, UserCreate, Token, UserRead, UserUpdate
+from models import Cita, Especialidad, EstadoCitaEnum, HorarioLaboral, SignosVitales, User
+from schemas import CitaCreate, CitaRead, CitaWithSignosRead, EstadoCita, ExtendedUserCreate, HorarioItem, SignosVitalesCreate, SignosVitalesRead, UserCreate, Token, UserRead, UserUpdate
 from auth import get_password_hash, authenticate_user, create_access_token
 from database import get_session
 from fastapi.security import OAuth2PasswordRequestForm
@@ -35,7 +35,8 @@ from auth import get_password_hash
 from database import get_session
 from datetime import time
 from schemas import AccountUpdate  # importa el nuevo esquema
-
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from typing import List
 
 router = APIRouter()
 
@@ -434,7 +435,7 @@ def obtener_citas_activas_por_medico(
 
 
 @router.post("/citas")
-def crear_cita(cita_data: CitaCreate, session: Session = Depends(get_session)):
+async  def crear_cita(cita_data: CitaCreate, session: Session = Depends(get_session)):
     # Validar solapamiento
     conflictos = session.exec(
         select(Cita).where(
@@ -486,6 +487,8 @@ def crear_cita(cita_data: CitaCreate, session: Session = Depends(get_session)):
     session.add(nueva_cita)
     session.commit()
     session.refresh(nueva_cita)
+    # Notificar a todos los clientes
+    await notificar_actualizacion()
 
     return {"message": "Cita creada exitosamente", "cita_id": nueva_cita.id}
 
@@ -523,7 +526,7 @@ def obtener_citas_hoy(
 
 
 @router.put("/citas/{cita_id}/para-signos")
-def marcar_cita_para_signos(
+async def marcar_cita_para_signos(
     cita_id: int,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
@@ -538,6 +541,8 @@ def marcar_cita_para_signos(
     cita.estado = EstadoCitaEnum.para_signos
     session.add(cita)
     session.commit()
+    # Notificar a todos los clientes
+    await notificar_actualizacion()
 
     return {"message": "Cita actualizada a 'para signos' correctamente."}
 
@@ -613,3 +618,107 @@ def obtener_especialidad_medico(
         return {"especialidad": None}
 
     return {"especialidad": medico.especialidad.nombre}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@router.post("/signos-vitales", response_model=SignosVitalesRead)
+async  def crear_signos_vitales(signos: SignosVitalesCreate, session: Session = Depends(get_session)):
+    # Verificar que la cita exista
+    cita = session.get(Cita, signos.cita_id)
+    if not cita:
+        raise HTTPException(status_code=404, detail="Cita no encontrada.")
+
+    # Crear los signos vitales
+    nuevos_signos = SignosVitales(**signos.dict())
+    session.add(nuevos_signos)
+
+    # Cambiar el estado de la cita a "en_espera"
+    cita.estado = EstadoCitaEnum.en_espera
+    session.add(cita)
+
+    session.commit()
+    session.refresh(nuevos_signos)
+    # Notificar a todos los clientes
+    await notificar_actualizacion()
+    return nuevos_signos
+
+
+
+
+@router.get("/signos-vitales/cita/{cita_id}", response_model=CitaWithSignosRead)
+def obtener_signos_vitales_por_cita(cita_id: int, session: Session = Depends(get_session)):
+    cita = session.get(Cita, cita_id)
+    if not cita:
+        raise HTTPException(status_code=404, detail="Cita no encontrada.")
+
+    # Consulta con join a signos vitales
+    cita_completa = session.exec(
+        select(Cita)
+        .where(Cita.id == cita_id)
+        .options(joinedload(Cita.signos_vitales))
+    ).first()
+
+    return cita_completa
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Conexiones activas
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: dict):
+        for connection in self.active_connections:
+            await connection.send_json(message)
+
+manager = ConnectionManager()
+
+@router.websocket("/ws/estado-citas")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            await websocket.receive_text()  # Mantener la conexión abierta
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+
+# Función para notificar cambios
+async def notificar_actualizacion():
+    await manager.broadcast({"evento": "actualizacion_citas"})

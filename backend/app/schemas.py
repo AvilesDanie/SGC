@@ -150,3 +150,50 @@ class CitaCreate(BaseModel):
     hora_inicio: time
     hora_fin: time
     estado: EstadoCita = EstadoCita.agendado
+
+
+
+
+
+
+
+
+
+
+
+
+
+class SignosVitalesCreate(BaseModel):
+    cita_id: int
+    presion_arterial: str
+    peso: float
+    talla: float
+    temperatura: float
+    saturacion_oxigeno: float
+
+
+class SignosVitalesRead(BaseModel):
+    id: int
+    cita_id: int
+    presion_arterial: str
+    peso: float
+    talla: float
+    temperatura: float
+    saturacion_oxigeno: float
+
+    class Config:
+        orm_mode = True
+
+
+class CitaWithSignosRead(BaseModel):
+    id: int
+    paciente_id: int
+    medico_id: int
+    fecha: date
+    hora_inicio: time
+    hora_fin: time
+    estado: str
+    signos_vitales: Optional[SignosVitalesRead]
+
+    class Config:
+        orm_mode = True

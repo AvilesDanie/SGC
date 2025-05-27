@@ -74,6 +74,15 @@ function CalendarDayView({ fecha, medico, citas, setCitas, onVolver, paciente })
     const handleCrearCita = async () => {
         if (!paciente || !inicio || !fin) return
 
+        // Validar mínimo de 10 minutos
+        const iniDate = strToDateTime(inicio)
+        const finDate = strToDateTime(fin)
+        const diferencia = (finDate - iniDate) / (1000 * 60) // en minutos
+        if (diferencia < 10) {
+            setModal({ tipo: 'error', mensaje: 'La duración mínima de la cita debe ser de 10 minutos.' })
+            return
+        }
+
         const payload = {
             paciente_id: paciente.id,
             medico_id: medico.id,
