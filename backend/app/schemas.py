@@ -197,3 +197,26 @@ class CitaWithSignosRead(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+
+
+
+
+
+class ExpedienteCreate(BaseModel):
+    cita_id: int
+    contenido: str
+
+class ExpedienteRead(BaseModel):
+    id: int
+    cita_id: int
+    contenido: str
+    fecha: date
+
+    class Config:
+        orm_mode = True
+
+
+class EstadoCitaRequest(BaseModel):
+    estado: EstadoCita

@@ -9,7 +9,8 @@ import GenerarTurno from './pages/GenerarTurno'
 import ValidarAsistencia from './pages/ValidarAsistencia'
 import SignosVitales from './pages/SignosVitales'
 import PrivateRoute from './components/PrivateRoute'
-
+import Expedientes from './pages/Expedientes'
+import EditarExpediente from './pages/EditarExpediente'
 function App() {
   return (
     <Routes>
@@ -78,6 +79,22 @@ function App() {
         element={
           <PrivateRoute>
             <SignosVitales />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/dashboard/expedientes"
+        element={
+          <PrivateRoute>
+            <Expedientes />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/dashboard/expediente/:id"
+        element={
+          <PrivateRoute>
+            <EditarExpediente />
           </PrivateRoute>
         }
       />
