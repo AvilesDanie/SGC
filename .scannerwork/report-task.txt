@@ -1,6 +1,6 @@
-projectKey=SGC-COCOMO
+projectKey=SGC-Analisis
 serverUrl=http://localhost:9000
 serverVersion=25.5.0.107428
-dashboardUrl=http://localhost:9000/dashboard?id=SGC-COCOMO
-ceTaskId=2eca1a5d-eb3a-4b20-abb8-713d7a27ba4c
-ceTaskUrl=http://localhost:9000/api/ce/task?id=2eca1a5d-eb3a-4b20-abb8-713d7a27ba4c
+dashboardUrl=http://localhost:9000/dashboard?id=SGC-Analisis
+ceTaskId=3fb1e058-3709-4c43-bbda-2b7b775f783b
+ceTaskUrl=http://localhost:9000/api/ce/task?id=3fb1e058-3709-4c43-bbda-2b7b775f783b

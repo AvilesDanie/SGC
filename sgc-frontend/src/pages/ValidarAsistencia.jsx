@@ -161,9 +161,11 @@ function ValidarAsistencia() {
             <option value="agendado">Agendado</option>
             <option value="para_signos">Para signos</option>
             <option value="en_espera">En espera</option>
-            <option value="en_consulta">En consulta</option>
+            
+            {/*<option value="en_consulta">En consulta</option>*/}
+            
             <option value="terminado">Terminado</option>
-            <option value="perdida">Perdida</option>
+            {/*<option value="perdida">Perdida</option>*/}
           </select>
         </div>
 
@@ -172,34 +174,45 @@ function ValidarAsistencia() {
             if (a.estado === 'agendado' && b.estado !== 'agendado') return -1;
             if (a.estado !== 'agendado' && b.estado === 'agendado') return 1;
             return 0;
-          })).filter(filtrar).map(cita => {
-            const paciente = pacientes[cita.paciente_id];
-            const medico = medicos[cita.medico_id];
-            const especialidad = especialidades[cita.medico_id];
+          })).filter(filtrar).length === 0 ? (
+            <div className="text-center mt-20 text-2xl text-gray-500 font-semibold">
+              🕐 No hay citas disponibles que coincidan con los filtros.
+            </div>
+          ) : (
+            [...citas].sort((a, b) => {
+              if (a.estado === 'agendado' && b.estado !== 'agendado') return -1;
+              if (a.estado !== 'agendado' && b.estado === 'agendado') return 1;
+              return 0;
+            }).filter(filtrar).map(cita => {
+              const paciente = pacientes[cita.paciente_id];
+              const medico = medicos[cita.medico_id];
+              const especialidad = especialidades[cita.medico_id];
 
-            return (
-              <div
-                key={cita.id}
-                className={`border-l-8 shadow ${estadoToColor[normalizarEstado(cita.estado)] || 'bg-gray-100 border'} p-4 rounded`}
-              >
-                <p><strong>Paciente:</strong> {paciente?.nombre} {paciente?.apellido}</p>
-                <p><strong>Cédula:</strong> {paciente?.cedula}</p>
-                <p><strong>Hora:</strong> {cita.hora_inicio} - {cita.hora_fin}</p>
-                <p><strong>Médico:</strong> {medico?.nombre} {medico?.apellido} ({especialidad || '—'})</p>
-                <p><strong>Estado:</strong> {cita.estado.replace('_', ' ')}</p>
+              return (
+                <div
+                  key={cita.id}
+                  className={`border-l-8 shadow ${estadoToColor[normalizarEstado(cita.estado)] || 'bg-gray-100 border'} p-4 rounded`}
+                >
+                  <p><strong>Paciente:</strong> {paciente?.nombre} {paciente?.apellido}</p>
+                  <p><strong>Cédula:</strong> {paciente?.cedula}</p>
+                  <p><strong>Hora:</strong> {cita.hora_inicio} - {cita.hora_fin}</p>
+                  <p><strong>Médico:</strong> {medico?.nombre} {medico?.apellido} ({especialidad || '—'})</p>
+                  <p><strong>Estado:</strong> {cita.estado.replace('_', ' ')}</p>
 
-                {cita.estado === 'agendado' && role === 'administrativo' && (
-                  <button
-                    onClick={() => marcarParaSignos(cita.id)}
-                    className="mt-2 bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-1 rounded text-sm"
-                  >
-                    Marcar como para signos
-                  </button>
-                )}
-              </div>
-            )
-          })}
+                  {cita.estado === 'agendado' && role === 'administrativo' && (
+                    <button
+                      onClick={() => marcarParaSignos(cita.id)}
+                      className="mt-2 bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-1 rounded text-sm"
+                    >
+                      Validar Asistencia y enviar a toma de Signos Vitales
+                    </button>
+                  )}
+                </div>
+              )
+            })
+          )}
         </div>
+
 
       </div>
     </div>

@@ -25,6 +25,11 @@ function SignosVitales() {
         saturacion_oxigeno: ''
     })
     const [errores, setErrores] = useState({})
+    const [filtros, setFiltros] = useState({
+        cedula: '',
+        nombre: '',
+        medico: ''
+    })
 
     const navigate = useNavigate()
 
@@ -45,6 +50,19 @@ function SignosVitales() {
                 navigate('/login', { replace: true })
             })
     }, [navigate])
+
+    const filtrar = (cita) => {
+        const paciente = pacientes[cita.paciente_id]
+        const medico = medicos[cita.medico_id]
+        if (!paciente || !medico) return false
+
+        const matchCedula = paciente.cedula.includes(filtros.cedula)
+        const matchNombre = (`${paciente.nombre} ${paciente.apellido}`).toLowerCase().includes(filtros.nombre.toLowerCase())
+        const matchMedico = (`${medico.nombre} ${medico.apellido}`).toLowerCase().includes(filtros.medico.toLowerCase())
+
+        return matchCedula && matchNombre && matchMedico
+    }
+
 
     const cargarCitas = async () => {
         try {
@@ -131,12 +149,12 @@ function SignosVitales() {
             case 'peso':
                 if (!value) return 'Campo obligatorio.'
                 const pesoNum = parseFloat(value)
-                if (pesoNum < 1 || pesoNum > 120) return 'Peso debe ser entre 2 y 120 kg.'
+                if (pesoNum < 2.5 || pesoNum > 120) return 'Peso debe ser entre 2.5 y 120 kg.'
                 return ''
             case 'talla':
                 if (!value) return 'Campo obligatorio.'
                 const tallaNum = parseFloat(value)
-                if (tallaNum < 80 || tallaNum > 200) return 'Talla debe ser entre 80 cm y 200 cm.'
+                if (tallaNum < 50 || tallaNum > 220) return 'Talla debe ser entre 50 cm y 220 cm.'
                 return ''
             case 'temperatura':
                 if (!value) return 'Campo obligatorio.'
@@ -156,21 +174,91 @@ function SignosVitales() {
 
     const handleChange = (e) => {
         const { name, value } = e.target
-        setSignos(prev => ({ ...prev, [name]: value }))
+        const nuevoSigno = { ...signos, [name]: value }
 
-        const error = validarCampo(name, value)
-        setErrores(prev => ({ ...prev, [name]: error }))
+        // Validar individualmente primero
+        const errorActual = validarCampo(name, value)
+
+        // Validar peso y talla con sus errores individuales
+        const pesoStr = nuevoSigno.peso
+        const tallaStr = nuevoSigno.talla
+        const pesoErr = validarCampo('peso', pesoStr)
+        const tallaErr = validarCampo('talla', tallaStr)
+
+        const nuevosErrores = {
+            ...errores,
+            [name]: errorActual
+        }
+
+        // Guardar errores individuales de peso/talla si no son el campo actual
+        if (name !== 'peso' && pesoErr) nuevosErrores.peso = pesoErr
+        if (name !== 'talla' && tallaErr) nuevosErrores.talla = tallaErr
+
+        // Validación cruzada SOLO si peso y talla son válidos por separado
+        if (!pesoErr && !tallaErr) {
+            const peso = parseFloat(pesoStr)
+            const talla = parseFloat(tallaStr)
+            const imc = peso / Math.pow(talla / 100, 2)
+            const imcRounded = Math.round(imc * 10) / 10  // redondea a 1 decimal
+
+            if (imcRounded < 10 || imcRounded > 60) {
+                const imcText = `⚠️ IMC fuera de rango (${imcRounded}).`
+
+                let minPeso = (10 * Math.pow(talla / 100, 2))
+                let maxPeso = (60 * Math.pow(talla / 100, 2))
+                minPeso = Math.max(minPeso, 2.5)
+                maxPeso = Math.min(maxPeso, 120)
+
+                let minTalla = Math.sqrt(peso / 60) * 100
+                let maxTalla = Math.sqrt(peso / 10) * 100
+                minTalla = Math.max(minTalla, 50)
+                maxTalla = Math.min(maxTalla, 220)
+
+                nuevosErrores.peso = `${imcText} Peso ideal: ${minPeso.toFixed(2)} - ${maxPeso.toFixed(2)} kg.`
+                nuevosErrores.talla = `${imcText} Talla ideal: ${minTalla.toFixed(2)} - ${maxTalla.toFixed(2)} cm.`
+
+            } else {
+                delete nuevosErrores.peso
+                delete nuevosErrores.talla
+            }
+
+
+
+        }
+
+        setSignos(nuevoSigno)
+        setErrores(nuevosErrores)
     }
 
+
+
+
+
+
     const guardarSignos = async () => {
-        // Validar todos los campos antes de enviar
         const nuevosErrores = {}
+
+        // Validaciones individuales
         Object.entries(signos).forEach(([campo, valor]) => {
             const msg = validarCampo(campo, valor)
             if (msg) nuevosErrores[campo] = msg
         })
-        setErrores(nuevosErrores)
 
+        // Validación de coherencia entre peso y talla
+        const peso = parseFloat(signos.peso)
+        const talla = parseFloat(signos.talla)
+
+        if (!isNaN(peso) && !isNaN(talla)) {
+            const imc = peso / Math.pow(talla / 100, 2)
+
+            // Valores extremos (fuera del rango humano normal)
+            if (imc < 10 || imc > 60) {
+                nuevosErrores.peso = 'El peso no concuerda con la talla (IMC fuera de rango normal)'
+                nuevosErrores.talla = 'La talla no concuerda con el peso (IMC fuera de rango normal)'
+            }
+        }
+
+        setErrores(nuevosErrores)
         if (Object.keys(nuevosErrores).length > 0) return
 
         try {
@@ -181,11 +269,8 @@ function SignosVitales() {
             alert('Error al guardar signos')
         }
     }
-    const citasOrdenadas = [...citas].sort((a, b) => {
-        if (a.estado === 'para_signos' && b.estado !== 'para_signos') return -1;
-        if (a.estado !== 'para_signos' && b.estado === 'para_signos') return 1;
-        return 0;
-    });
+
+
 
     return (
         <div className="flex min-h-screen bg-gradient-to-br from-white to-cyan-100">
@@ -194,57 +279,89 @@ function SignosVitales() {
             <div className="flex-1 p-8 ml-64">
                 <h1 className="text-3xl font-bold text-teal-800 mb-6">Signos Vitales</h1>
 
-                <div className="space-y-4">
-                    {/* Ordena las citas antes de mapearlas */}
-                    {([...citas].sort((a, b) => {
-                        if (a.estado === 'para_signos' && b.estado !== 'para_signos') return -1;
-                        if (a.estado !== 'para_signos' && b.estado === 'para_signos') return 1;
-                        return 0;
-                    })).map(cita => {
-                        const paciente = pacientes[cita.paciente_id];
-                        const medico = medicos[cita.medico_id];
-                        const especialidad = especialidades[cita.medico_id];
-                        const signosCita = signosPorCita[cita.id];
-
-                        return (
-                            <div
-                                key={cita.id}
-                                className={`border-l-8 shadow ${estadoToColor[cita.estado.replace(' ', '_')] || 'bg-gray-100 border'} p-4 rounded`}
-                            >
-                                <div className="flex flex-col md:flex-row justify-between gap-4">
-                                    {/* Sección izquierda: Datos del paciente y cita */}
-                                    <div className="flex-1">
-                                        <p><strong>Paciente:</strong> {paciente?.nombre} {paciente?.apellido}</p>
-                                        <p><strong>Cédula:</strong> {paciente?.cedula}</p>
-                                        <p><strong>Médico:</strong> {medico?.nombre} {medico?.apellido} ({especialidad || '—'})</p>
-                                        <p><strong>Hora:</strong> {cita.hora_inicio} - {cita.hora_fin}</p>
-                                        <p><strong>Estado:</strong> {cita.estado}</p>
-
-                                        {cita.estado === 'para_signos' && (
-                                            <button
-                                                onClick={() => abrirModal(cita)}
-                                                className="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded text-sm"
-                                            >
-                                                Ingresar Signos Vitales
-                                            </button>
-                                        )}
-                                    </div>
-
-                                    {/* Sección derecha: Signos vitales (si existen) */}
-                                    {signosCita && signosCita.signos_vitales && (
-                                        <div className="flex-1 border-l md:border-l-2 border-gray-300 pl-4 text-sm text-gray-700">
-                                            <p><strong>Presión arterial:</strong> {signosCita.signos_vitales.presion_arterial}</p>
-                                            <p><strong>Peso:</strong> {signosCita.signos_vitales.peso} kg</p>
-                                            <p><strong>Talla:</strong> {signosCita.signos_vitales.talla} cm</p>
-                                            <p><strong>Temperatura:</strong> {signosCita.signos_vitales.temperatura} °C</p>
-                                            <p><strong>Saturación de oxígeno:</strong> {signosCita.signos_vitales.saturacion_oxigeno} %</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )
-                    })}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <input
+                        type="text"
+                        placeholder="Buscar por cédula"
+                        value={filtros.cedula}
+                        onChange={e => setFiltros({ ...filtros, cedula: e.target.value })}
+                        className="input"
+                    />
+                    <input
+                        type="text"
+                        placeholder="Buscar por nombre"
+                        value={filtros.nombre}
+                        onChange={e => setFiltros({ ...filtros, nombre: e.target.value })}
+                        className="input"
+                    />
+                    <input
+                        type="text"
+                        placeholder="Buscar por médico"
+                        value={filtros.medico}
+                        onChange={e => setFiltros({ ...filtros, medico: e.target.value })}
+                        className="input"
+                    />
                 </div>
+
+                <div className="space-y-4">
+                    {[...citas].filter(filtrar).length === 0 ? (
+                        <div className="text-center mt-20 text-2xl text-gray-500 font-semibold">
+                            🕐 No hay citas pendientes para signos vitales o los filtros no coinciden.
+                        </div>
+                    ) : (
+                        [...citas]
+                            .sort((a, b) => {
+                                if (a.estado === 'para_signos' && b.estado !== 'para_signos') return -1;
+                                if (a.estado !== 'para_signos' && b.estado === 'para_signos') return 1;
+                                return 0;
+                            })
+                            .filter(filtrar)
+                            .map(cita => {
+
+                                const paciente = pacientes[cita.paciente_id];
+                                const medico = medicos[cita.medico_id];
+                                const especialidad = especialidades[cita.medico_id];
+                                const signosCita = signosPorCita[cita.id];
+
+                                return (
+                                    <div
+                                        key={cita.id}
+                                        className={`border-l-8 shadow ${estadoToColor[cita.estado.replace(' ', '_')] || 'bg-gray-100 border'} p-4 rounded`}
+                                    >
+                                        <div className="flex flex-col md:flex-row justify-between gap-4">
+                                            <div className="flex-1">
+                                                <p><strong>Paciente:</strong> {paciente?.nombre} {paciente?.apellido}</p>
+                                                <p><strong>Cédula:</strong> {paciente?.cedula}</p>
+                                                <p><strong>Médico:</strong> {medico?.nombre} {medico?.apellido} ({especialidad || '—'})</p>
+                                                <p><strong>Hora:</strong> {cita.hora_inicio} - {cita.hora_fin}</p>
+                                                <p><strong>Estado:</strong> {cita.estado}</p>
+
+                                                {cita.estado === 'para_signos' && (
+                                                    <button
+                                                        onClick={() => abrirModal(cita)}
+                                                        className="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded text-sm"
+                                                    >
+                                                        Ingresar Signos Vitales
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            {signosCita && signosCita.signos_vitales && (
+                                                <div className="flex-1 border-l md:border-l-2 border-gray-300 pl-4 text-sm text-gray-700">
+                                                    <p><strong>Presión arterial:</strong> {signosCita.signos_vitales.presion_arterial}</p>
+                                                    <p><strong>Peso:</strong> {signosCita.signos_vitales.peso} kg</p>
+                                                    <p><strong>Talla:</strong> {signosCita.signos_vitales.talla} cm</p>
+                                                    <p><strong>Temperatura:</strong> {signosCita.signos_vitales.temperatura} °C</p>
+                                                    <p><strong>Saturación de oxígeno:</strong> {signosCita.signos_vitales.saturacion_oxigeno} %</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )
+                            })
+                    )}
+                </div>
+
 
             </div>
 
@@ -254,13 +371,14 @@ function SignosVitales() {
                         <h3 className="text-2xl font-bold mb-4">Ingresar Signos Vitales</h3>
                         <div className="space-y-2">
                             {[
-                                { name: 'presion_arterial', placeholder: 'Presión arterial (mmHg) (ej: 120/80)' },
-                                { name: 'peso', placeholder: 'Peso (kg)', type: 'number' },
-                                { name: 'talla', placeholder: 'Talla (cm)', type: 'number' },
-                                { name: 'temperatura', placeholder: 'Temperatura (°C)', type: 'number' },
-                                { name: 'saturacion_oxigeno', placeholder: 'Saturación de oxígeno (%)', type: 'number' }
+                                { name: 'presion_arterial', label: 'Presión arterial (mmHg)', placeholder: 'Ej: 120/80' },
+                                { name: 'peso', label: 'Peso (kg)', type: 'number', placeholder: 'Ej: 70' },
+                                { name: 'talla', label: 'Talla (cm)', type: 'number', placeholder: 'Ej: 170' },
+                                { name: 'temperatura', label: 'Temperatura (°C)', type: 'number', placeholder: 'Ej: 36.5' },
+                                { name: 'saturacion_oxigeno', label: 'Saturación de oxígeno (%)', type: 'number', placeholder: 'Ej: 98' }
                             ].map(field => (
                                 <div key={field.name} className="flex flex-col">
+                                    <label className="text-sm font-medium mb-1">{field.label}</label>
                                     <input
                                         name={field.name}
                                         placeholder={field.placeholder}
@@ -274,12 +392,13 @@ function SignosVitales() {
                                         }}
                                         className="w-full border p-2 rounded"
                                     />
-
-                                    {errores[field.name] && (
+                                    {errores[field.name]?.trim() && (
                                         <span className="text-red-500 text-sm">{errores[field.name]}</span>
                                     )}
+
                                 </div>
                             ))}
+
                         </div>
 
                         <div className="mt-4 flex justify-end space-x-2">

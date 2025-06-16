@@ -782,9 +782,9 @@ def obtener_expedientes_por_paciente(
 
 
 @router.put("/citas/{cita_id}/estado")
-def cambiar_estado_cita(
+async def cambiar_estado_cita(
     cita_id: int,
-    data: EstadoCitaRequest,  # <-- Cambio aquí
+    data: EstadoCitaRequest,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
@@ -798,7 +798,12 @@ def cambiar_estado_cita(
     cita.estado = data.estado
     session.add(cita)
     session.commit()
+
+    # 🔔 Notificar a los clientes conectados por WebSocket
+    await notificar_actualizacion()
+
     return {"message": "Estado actualizado"}
+
 
 
 
