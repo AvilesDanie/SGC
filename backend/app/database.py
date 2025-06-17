@@ -2,8 +2,12 @@ from sqlmodel import SQLModel, create_engine, Session, select
 from models import User, RoleEnum
 from utils import get_password_hash  # Utilidad para hash de contraseña
 from datetime import date
+import os
+from dotenv import load_dotenv
 
-DATABASE_URL = "postgresql://postgres:taco@localhost:5432/gestion_clinica"
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
 engine = create_engine(DATABASE_URL, echo=True)
 
 def get_session():

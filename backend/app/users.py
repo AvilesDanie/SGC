@@ -37,14 +37,20 @@ from datetime import time
 from schemas import AccountUpdate  # importa el nuevo esquema
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from typing import List
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 router = APIRouter()
 
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-SECRET_KEY = "SECRET"
-ALGORITHM = "HS256"
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM")
+
+
 
 def get_current_user_optional(authorization: str = Header(default=None)):
     if authorization is None:
@@ -204,8 +210,13 @@ def get_current_logged_user(user=Depends(get_current_user)):
 
 @router.get("/especialidades", response_model=List[EspecialidadRead])
 def obtener_especialidades(session: Session = Depends(get_session)):
-    return session.exec(select(Especialidad)).all()
-
+    stmt = (
+        select(Especialidad)
+        .join(Especialidad.medicos)
+        .where(User.role == RoleEnum.medico, User.is_active == True)
+        .distinct()
+    )
+    return session.exec(stmt).all()
 
 
 

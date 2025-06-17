@@ -177,9 +177,18 @@ function GestionUsuarios() {
     if (Object.keys(nuevosErrores).length > 0) return
 
     try {
-      await axios.put(`http://localhost:8000/usuarios/${modalUsuario.id}`, formEdit, {
+      const payload = {
+        ...formEdit,
+        nombre: formEdit.nombre.toUpperCase(),
+        apellido: formEdit.apellido.toUpperCase(),
+        direccion: formEdit.direccion.toUpperCase(),
+        especialidad: formEdit.especialidad?.toUpperCase() || ''
+      }
+
+      await axios.put(`http://localhost:8000/usuarios/${modalUsuario.id}`, payload, {
         headers: { Authorization: `Bearer ${token}` }
       })
+
       setModalUsuario(null)
       fetchUsuarios()
     } catch {

@@ -244,19 +244,7 @@ function SignosVitales() {
             if (msg) nuevosErrores[campo] = msg
         })
 
-        // Validación de coherencia entre peso y talla
-        const peso = parseFloat(signos.peso)
-        const talla = parseFloat(signos.talla)
-
-        if (!isNaN(peso) && !isNaN(talla)) {
-            const imc = peso / Math.pow(talla / 100, 2)
-
-            // Valores extremos (fuera del rango humano normal)
-            if (imc < 10 || imc > 60) {
-                nuevosErrores.peso = 'El peso no concuerda con la talla (IMC fuera de rango normal)'
-                nuevosErrores.talla = 'La talla no concuerda con el peso (IMC fuera de rango normal)'
-            }
-        }
+        
 
         setErrores(nuevosErrores)
         if (Object.keys(nuevosErrores).length > 0) return

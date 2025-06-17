@@ -17,6 +17,8 @@ function RegistroPaciente() {
   const [error, setError] = useState('')
   const navigate = useNavigate()
   const [role, setRole] = useState('')
+  const [errores, setErrores] = useState({})
+
 
   useEffect(() => {
     const role = localStorage.getItem('role')
@@ -29,76 +31,91 @@ function RegistroPaciente() {
   const handleChange = (e) => {
     const { name, value } = e.target
     setForm(prev => ({ ...prev, [name]: value }))
+
+    const error = validarCampo(name, value)
+    setErrores(prev => ({ ...prev, [name]: error }))
   }
+
 
   const validarCedulaEcuatoriana = (cedula) => {
     if (!/^\d{10}$/.test(cedula)) return false
     const provincia = parseInt(cedula.substring(0, 2))
     const tercerDigito = parseInt(cedula[2])
     if (provincia < 1 || provincia > 24 || tercerDigito >= 6) return false
-    const coeficientes = [2, 1, 2, 1, 2, 1, 2, 1, 2]
+    const coef = [2, 1, 2, 1, 2, 1, 2, 1, 2]
     let suma = 0
     for (let i = 0; i < 9; i++) {
-      let val = parseInt(cedula[i]) * coeficientes[i]
+      let val = parseInt(cedula[i]) * coef[i]
       if (val >= 10) val -= 9
       suma += val
     }
-    const digitoVerificador = (10 - (suma % 10)) % 10
-    return digitoVerificador === parseInt(cedula[9])
+    const verificador = (10 - (suma % 10)) % 10
+    return verificador === parseInt(cedula[9])
   }
+
+  const validarCampo = (name, value, touched = true) => {
+    const hoy = new Date()
+    const fechaActual = hoy.toISOString().split('T')[0]
+
+    switch (name) {
+      case 'cedula':
+        if (!value) return 'La cédula es obligatoria.'
+        if (!/^\d{10}$/.test(value)) return 'Debe tener 10 dígitos.'
+        if (!validarCedulaEcuatoriana(value)) return 'Cédula no válida en Ecuador.'
+        return ''
+      case 'nombre':
+      case 'apellido':
+        if (!value) return `El ${name} es obligatorio.`
+        if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(value)) return 'Solo letras y espacios.'
+        return ''
+      case 'telefono':
+        if (!value) return 'El teléfono es obligatorio.'
+        if (!/^09\d{8}$/.test(value)) return 'Debe comenzar con 09 y tener 10 dígitos.'
+        return ''
+      case 'direccion':
+        if (!value) return 'La dirección es obligatoria.'
+        return ''
+      case 'fecha_nacimiento':
+        if (!value && touched) return 'La fecha es obligatoria.'
+        if (value > fechaActual) return 'No puede ser futura.'
+        return ''
+      default:
+        return ''
+    }
+  }
+
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setMensaje('')
 
-    const { cedula, nombre, apellido, fecha_nacimiento, direccion, telefono } = form
+    const nuevosErrores = {}
+    Object.entries(form).forEach(([key, value]) => {
+      const msg = validarCampo(key, value)
+      if (msg) nuevosErrores[key] = msg
+    })
 
-    if (!cedula || !nombre || !apellido || !fecha_nacimiento || !direccion || !telefono) {
-      setError('Todos los campos son obligatorios.')
-      return
-    }
+    setErrores(nuevosErrores)
 
-    if (!validarCedulaEcuatoriana(cedula)) {
-      setError('La cédula ingresada no es válida en Ecuador.')
-      return
-    }
-
-    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(nombre)) {
-      setError('El nombre no puede contener caracteres especiales ni números.')
-      return
-    }
-
-    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(apellido)) {
-      setError('El apellido no puede contener caracteres especiales ni números.')
-      return
-    }
-
-    const fechaActual = new Date().toISOString().split('T')[0]
-    if (fecha_nacimiento > fechaActual) {
-      setError('La fecha de nacimiento no puede ser futura.')
-      return
-    }
-
-    if (!/^09\d{8}$/.test(telefono)) {
-      setError('El teléfono debe iniciar con 09 y tener exactamente 10 dígitos.')
-      return
-    }
+    if (Object.keys(nuevosErrores).length > 0) return
 
     try {
       const token = localStorage.getItem('token')
 
-      await axios.post('http://localhost:8000/register', {
-        username: cedula,
-        password: cedula,
-        nombre,
-        apellido,
-        fecha_nacimiento,
-        direccion,
-        telefono,
-        cedula,
+      const payload = {
+        username: form.cedula,
+        password: form.cedula,
+        nombre: form.nombre.toUpperCase(),
+        apellido: form.apellido.toUpperCase(),
+        direccion: form.direccion.toUpperCase(),
+        telefono: form.telefono,
+        cedula: form.cedula,
+        fecha_nacimiento: form.fecha_nacimiento,
         role: 'paciente'
-      }, {
+      }
+
+      await axios.post('http://localhost:8000/register', payload, {
         headers: { Authorization: `Bearer ${token}` }
       })
 
@@ -111,10 +128,12 @@ function RegistroPaciente() {
         telefono: '',
         cedula: ''
       })
+      setErrores({})
     } catch (err) {
       setError('Error al registrar el paciente.')
     }
   }
+
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-white to-cyan-100">
@@ -128,8 +147,8 @@ function RegistroPaciente() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {[
                 { id: "cedula", label: "Cédula", placeholder: "Ej. 1712345678" },
-                { id: "nombre", label: "Nombre", placeholder: "Ej. Juan" },
-                { id: "apellido", label: "Apellido", placeholder: "Ej. Pérez" },
+                { id: "nombre", label: "Nombres", placeholder: "Ej. Juan Pablo" },
+                { id: "apellido", label: "Apellidos", placeholder: "Ej. Pérez Mendoza" },
                 { id: "telefono", label: "Teléfono", placeholder: "Ej. 0991234567" },
                 { id: "direccion", label: "Dirección", placeholder: "Ej. Av. Siempre Viva 123" },
                 { id: "fecha_nacimiento", label: "Fecha de nacimiento", type: "date", placeholder: "" }
@@ -145,6 +164,9 @@ function RegistroPaciente() {
                     onChange={handleChange}
                     className="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
                   />
+                  {errores[field.id] && (
+                    <span className="text-sm text-red-600 mt-1">{errores[field.id]}</span>
+                  )}
                 </div>
               ))}
             </div>

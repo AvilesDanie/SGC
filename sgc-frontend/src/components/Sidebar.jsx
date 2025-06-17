@@ -38,9 +38,11 @@ function Sidebar({ role }) {
             <img src={logo} alt="Logo SGC" className="h-20 w-20" />
             <span className="text-4xl font-bold tracking-wide text-white">SGC</span>
           </Link>
+          {/* Esto puede dar error*/}
           <h2 className="text-lg mt-4 font-semibold text-white">
-            Panel - {role}
+            Panel - {role ? role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : ''}
           </h2>
+
         </div>
       </div>
 

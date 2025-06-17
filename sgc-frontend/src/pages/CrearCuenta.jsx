@@ -260,27 +260,27 @@ function CrearCuenta() {
   }
 
   const updateHorario = (dia, campo, valor) => {
-  setForm(prev => {
-    const existente = prev.horario.find(h => h.dia === dia)
-    const horarioActualizado = existente
-      ? prev.horario.map(h => h.dia === dia ? { ...h, [campo]: valor } : h)
-      : [...prev.horario, { dia, [campo]: valor }]
+    setForm(prev => {
+      const existente = prev.horario.find(h => h.dia === dia)
+      const horarioActualizado = existente
+        ? prev.horario.map(h => h.dia === dia ? { ...h, [campo]: valor } : h)
+        : [...prev.horario, { dia, [campo]: valor }]
 
-    validarHorarioPorDia(dia, horarioActualizado.find(h => h.dia === dia))
+      validarHorarioPorDia(dia, horarioActualizado.find(h => h.dia === dia))
 
-    // 👉 Validación general dinámica de todos los horarios
-    if (form.role !== 'paciente') {
-      const { horariosValidos } = calcularHorariosValidos(horarioActualizado)
-      if (horariosValidos === 0) {
-        setMensajeGlobal('Debe asignar al menos un horario válido.')
-      } else {
-        setMensajeGlobal('')
+      // 👉 Validación general dinámica de todos los horarios
+      if (form.role !== 'paciente') {
+        const { horariosValidos } = calcularHorariosValidos(horarioActualizado)
+        if (horariosValidos === 0) {
+          setMensajeGlobal('Debe asignar al menos un horario válido.')
+        } else {
+          setMensajeGlobal('')
+        }
       }
-    }
 
-    return { ...prev, horario: horarioActualizado }
-  })
-}
+      return { ...prev, horario: horarioActualizado }
+    })
+  }
 
 
   const validarHorarioPorDia = (dia, horario) => {
@@ -307,53 +307,53 @@ function CrearCuenta() {
 
 
   const limpiarCampoHorario = (dia, campo) => {
-  setForm(prev => {
-    const nuevoHorario = prev.horario.map(h => {
-      if (h.dia === dia) {
-        const limpio = { ...h, [campo]: '' }
-        if (!limpio.hora_inicio && !limpio.hora_fin) return null
-        return limpio
-      }
-      return h
-    }).filter(Boolean)
+    setForm(prev => {
+      const nuevoHorario = prev.horario.map(h => {
+        if (h.dia === dia) {
+          const limpio = { ...h, [campo]: '' }
+          if (!limpio.hora_inicio && !limpio.hora_fin) return null
+          return limpio
+        }
+        return h
+      }).filter(Boolean)
 
-    // Validación dinámica
-    if (form.role !== 'paciente') {
-      const { horariosValidos } = calcularHorariosValidos(nuevoHorario)
-      if (horariosValidos === 0) {
-        setMensajeGlobal('Debe asignar al menos un horario válido.')
-      } else {
-        setMensajeGlobal('')
+      // Validación dinámica
+      if (form.role !== 'paciente') {
+        const { horariosValidos } = calcularHorariosValidos(nuevoHorario)
+        if (horariosValidos === 0) {
+          setMensajeGlobal('Debe asignar al menos un horario válido.')
+        } else {
+          setMensajeGlobal('')
+        }
       }
-    }
 
-    return { ...prev, horario: nuevoHorario }
-  })
-}
+      return { ...prev, horario: nuevoHorario }
+    })
+  }
 
 
   const calcularHorariosValidos = (horarios) => {
-  let horariosValidos = 0
-  let erroresHorario = {}
+    let horariosValidos = 0
+    let erroresHorario = {}
 
-  diasSemana.forEach((dia) => {
-    const horarioDia = horarios.find(h => h.dia === dia)
-    if (horarioDia) {
-      const { hora_inicio, hora_fin } = horarioDia
-      if (hora_inicio && hora_fin) {
-        if (hora_inicio < hora_fin) {
-          horariosValidos++
-        } else {
-          erroresHorario[dia] = 'Hora fin debe ser posterior a hora inicio.'
+    diasSemana.forEach((dia) => {
+      const horarioDia = horarios.find(h => h.dia === dia)
+      if (horarioDia) {
+        const { hora_inicio, hora_fin } = horarioDia
+        if (hora_inicio && hora_fin) {
+          if (hora_inicio < hora_fin) {
+            horariosValidos++
+          } else {
+            erroresHorario[dia] = 'Hora fin debe ser posterior a hora inicio.'
+          }
+        } else if (hora_inicio || hora_fin) {
+          erroresHorario[dia] = 'Ambas horas deben estar completas.'
         }
-      } else if (hora_inicio || hora_fin) {
-        erroresHorario[dia] = 'Ambas horas deben estar completas.'
       }
-    }
-  })
+    })
 
-  return { horariosValidos, erroresHorario }
-}
+    return { horariosValidos, erroresHorario }
+  }
 
 
   const handleSubmit = async (e) => {
@@ -407,7 +407,14 @@ function CrearCuenta() {
 
     try {
       const token = localStorage.getItem('token')
-      const payload = { ...form }
+      const payload = {
+        ...form,
+        nombre: form.nombre.toUpperCase(),
+        apellido: form.apellido.toUpperCase(),
+        direccion: form.direccion.toUpperCase(),
+        especialidad: form.especialidad?.toUpperCase() || ''
+      }
+
       if (form.role !== 'paciente') payload.horario = form.horario
       if (form.role !== 'medico') delete payload.especialidad
 
@@ -452,8 +459,8 @@ function CrearCuenta() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {[
                 { id: "cedula", label: "Cédula", placeholder: "1712345678" },
-                { id: "nombre", label: "Nombre", placeholder: "Juan" },
-                { id: "apellido", label: "Apellido", placeholder: "Pérez" },
+                { id: "nombre", label: "Nombres", placeholder: "Juan Pablo" },
+                { id: "apellido", label: "Apellidos", placeholder: "Pérez Mendoza" },
                 { id: "telefono", label: "Teléfono", placeholder: "0991234567" },
                 { id: "direccion", label: "Dirección", placeholder: "Av. Siempre Viva" },
               ].map((field) => (
@@ -498,9 +505,12 @@ function CrearCuenta() {
                 <label className="text-gray-700 font-medium">Rol</label>
                 <select name="role" value={form.role} onChange={handleRoleChange} className="border rounded px-4 py-2">
                   {rolesDisponibles.map(r => (
-                    <option key={r} value={r}>{r}</option>
+                    <option key={r} value={r}>
+                      {r.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </option>
                   ))}
                 </select>
+
               </div>
 
               <div className="flex flex-col">
@@ -601,12 +611,12 @@ function CrearCuenta() {
                 {mensajeGlobal}
               </div>
             )}
-            
+
             <button type="submit" className="w-full bg-teal-600 text-white py-2 rounded hover:bg-teal-700">
               Crear cuenta
             </button>
           </form>
-          
+
         </div>
       </div>
       {modalAbierto && (

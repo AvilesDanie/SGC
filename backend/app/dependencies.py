@@ -4,10 +4,14 @@ from jose import jwt, JWTError
 from database import get_session
 from models import User
 from sqlmodel import Session, select
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-SECRET_KEY = "SECRET"
-ALGORITHM = "HS256"
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM")
 
 def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Depends(get_session)):
     try:
