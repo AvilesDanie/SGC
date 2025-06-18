@@ -103,6 +103,27 @@ function RegistroPaciente() {
     try {
       const token = localStorage.getItem('token')
 
+
+      // Verificar duplicados antes de enviar
+      const usuariosExistentes = await axios.get('http://localhost:8000/usuarios', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      const existeCedula = usuariosExistentes.data.some(u => u.cedula === form.cedula)
+      const existeTelefono = usuariosExistentes.data.some(u => u.telefono === form.telefono)
+
+      if (existeCedula) {
+        setErrores(prev => ({ ...prev, cedula: 'Cédula ya registrada.' }))
+        return
+      }
+
+      if (existeTelefono) {
+        setErrores(prev => ({ ...prev, telefono: 'Teléfono ya registrado.' }))
+        return
+      }
+
+
+
       const payload = {
         username: form.cedula,
         password: form.cedula,
