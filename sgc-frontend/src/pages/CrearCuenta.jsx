@@ -28,7 +28,7 @@ function CrearCuenta() {
   const [usarOtraEspecialidad, setUsarOtraEspecialidad] = useState(false)
   const [mensajeGlobal, setMensajeGlobal] = useState('')
   const navigate = useNavigate()
-  const [touched, setTouched] = useState({fecha_nacimiento: true})
+  const [touched, setTouched] = useState({ fecha_nacimiento: true })
   const [modalAbierto, setModalAbierto] = useState(false)
 
   useEffect(() => {
@@ -58,66 +58,93 @@ function CrearCuenta() {
     return verificador === parseInt(cedula[9])
   }
 
-  const validarCampo = (name, value) => {
+  function validarCedula(value) {
+    if (!value) return 'La cédula es obligatoria.'
+    if (!/^\d{10}$/.test(value)) return 'Debe tener 10 dígitos.'
+    if (!validarCedulaEcuatoriana(value)) return 'Cédula no válida en Ecuador.'
+    return ''
+  }
+
+  function validarNombreApellido(value, field) {
+    if (!value) return `El ${field} es obligatorio.`
+    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(value)) return 'Solo letras y espacios.'
+    return ''
+  }
+
+  function validarTelefono(value) {
+    if (!value) return 'El teléfono es obligatorio.'
+    if (!/^09\d{8}$/.test(value)) return 'Debe comenzar con 09 y tener 10 dígitos.'
+    return ''
+  }
+
+  function validarUsername(value) {
+    if (!value) return 'Usuario obligatorio.'
+    if (/\s/.test(value)) return 'Sin espacios.'
+    if (value.length < 4) return 'Debe tener al menos 4 caracteres.'
+    return ''
+  }
+
+  function validarPassword(value) {
+    if (!value) return 'Contraseña obligatoria.'
+    if (/\s/.test(value)) return 'Sin espacios.'
+    if (value.length < 4) return 'Debe tener al menos 4 caracteres.'
+    return ''
+  }
+
+  function validarFechaNacimiento(value, touched, role) {
+    if (!value && touched) return 'La fecha es obligatoria.'
+
+    const fechaActual = new Date().toISOString().split('T')[0]
+    if (value > fechaActual) return 'No puede ser futura.'
+
+    const nacimiento = new Date(value)
     const hoy = new Date()
-    const fechaActual = hoy.toISOString().split('T')[0]
+    let edad = hoy.getFullYear() - nacimiento.getFullYear()
+    const m = hoy.getMonth() - nacimiento.getMonth()
+    const d = hoy.getDate() - nacimiento.getDate()
+    if (m < 0 || (m === 0 && d < 0)) edad--
+
+    if (edad > 120) return 'Edad no puede ser mayor a 120 años.'
+    if (role !== 'paciente' && edad < 22) return 'Edad no puede ser menor a 22 años.'
+    return ''
+  }
+
+
+  function validarEspecialidad(value, role) {
+    if (role === 'medico') {
+      if (!value) return 'Especialidad obligatoria.'
+      if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(value)) return 'Solo letras.'
+    }
+    return ''
+  }
+
+
+
+  const validarCampo = (name, value) => {
     switch (name) {
       case 'cedula':
-        if (!value) return 'La cédula es obligatoria.'
-        if (!/^\d{10}$/.test(value)) return 'Debe tener 10 dígitos.'
-        if (!validarCedulaEcuatoriana(value)) return 'Cédula no válida en Ecuador.'
-        return ''
+        return validarCedula(value)
       case 'nombre':
+        return validarNombreApellido(value, 'nombre')
       case 'apellido':
-        if (!value) return `El ${name} es obligatorio.`
-        if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(value)) return 'Solo letras y espacios.'
-        return ''
-      case 'fecha_nacimiento': {
-        if (!value && touched.fecha_nacimiento) return 'La fecha es obligatoria.'
-        if (value > fechaActual) return 'No puede ser futura.'
-
-        const nacimiento = new Date(value)
-        const hoy = new Date()
-        let edad = hoy.getFullYear() - nacimiento.getFullYear()
-        const m = hoy.getMonth() - nacimiento.getMonth()
-        const d = hoy.getDate() - nacimiento.getDate()
-
-        if (m < 0 || (m === 0 && d < 0)) edad--
-
-        if (edad > 120) return 'Edad no puede ser mayor a 120 años.'
-        if (form.role !== 'paciente' && edad < 22) return 'Edad no puede ser menor a 22 años.'
-        return ''
-      }
-
+        return validarNombreApellido(value, 'apellido')
+      case 'fecha_nacimiento':
+        return validarFechaNacimiento(value, touched.fecha_nacimiento, form.role)
       case 'telefono':
-        if (!value) return 'El teléfono es obligatorio.'
-        if (!/^09\d{8}$/.test(value)) return 'Debe comenzar con 09 y tener 10 dígitos.'
-        return ''
+        return validarTelefono(value)
       case 'direccion':
-        if (!value) return 'La dirección es obligatoria.'
-        return ''
+        return value ? '' : 'La dirección es obligatoria.'
       case 'username':
-        if (!value) return 'Usuario obligatorio.'
-        if (/\s/.test(value)) return 'Sin espacios.'
-        if (value.length < 4) return 'Debe tener al menos 4 caracteres.'
-        return ''
-
+        return validarUsername(value)
       case 'password':
-        if (!value) return 'Contraseña obligatoria.'
-        if (/\s/.test(value)) return 'Sin espacios.'
-        if (value.length < 4) return 'Debe tener al menos 4 caracteres.'
-        return ''
-
+        return validarPassword(value)
       case 'especialidad':
-        if (form.role === 'medico') {
-          if (!value) return 'Especialidad obligatoria.'
-          if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(value)) return 'Solo letras.'
-        }
-        return ''
+        return validarEspecialidad(value, form.role)
       default:
         return ''
     }
   }
+
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -159,72 +186,80 @@ function CrearCuenta() {
 
   }
 
+  function validarFechaCambioRol(value, rol) {
+    const hoy = new Date();
+    const fechaActual = hoy.toISOString().split('T')[0];
+    if (!value) return '';
+    if (value > fechaActual) return 'No puede ser futura.';
+
+    const nacimiento = new Date(value);
+    let edad = hoy.getFullYear() - nacimiento.getFullYear();
+    const m = hoy.getMonth() - nacimiento.getMonth();
+    const d = hoy.getDate() - nacimiento.getDate();
+    if (m < 0 || (m === 0 && d < 0)) edad--;
+
+    if (edad > 120) return 'Edad no puede ser mayor a 120 años.';
+    if (rol !== 'paciente' && edad < 22) return 'Edad no puede ser menor a 22 años.';
+    return '';
+  }
+
+  async function validarDuplicadosAlCambiarRol(form, nuevoRol) {
+    const token = localStorage.getItem('token');
+    const campos = ['cedula', 'telefono', 'username'];
+    const nuevosErrores = {};
+
+    if (!token) return nuevosErrores;
+
+    try {
+      const res = await axios.get('http://localhost:8000/usuarios', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      for (const campo of campos) {
+        const valor = form[campo];
+        if (valor?.length >= 3) {
+          nuevosErrores[campo] = obtenerErrorDuplicado(res.data, campo, valor, nuevoRol);
+        }
+      }
+    } catch (err) {
+      console.warn('Error validando duplicados al cambiar rol:', err);
+    }
+
+    return nuevosErrores;
+  }
+
+  function obtenerErrorDuplicado(usuarios, campo, valor, nuevoRol) {
+    const duplicado = usuarios.find(u => u[campo] === valor);
+    if (!duplicado) return '';
+
+    const unoEsPaciente = nuevoRol === 'paciente' || duplicado.role === 'paciente';
+    const ambosPacientes = nuevoRol === 'paciente' && duplicado.role === 'paciente';
+
+    if (!unoEsPaciente || ambosPacientes) {
+      return `${campo[0].toUpperCase() + campo.slice(1)} ya está registrado para otro usuario.`;
+    }
+    return '';
+  }
+
+
 
   const handleRoleChange = async (e) => {
-    const nuevoRol = e.target.value
+    const nuevoRol = e.target.value;
 
-    setForm(prev => ({ ...prev, role: nuevoRol, especialidad: '', horario: [] }))
-    setUsarOtraEspecialidad(false)
+    setForm(prev => ({ ...prev, role: nuevoRol, especialidad: '', horario: [] }));
+    setUsarOtraEspecialidad(false);
 
-    const errorFecha = (() => {
-      const hoy = new Date()
-      const fechaActual = hoy.toISOString().split('T')[0]
-      const value = form.fecha_nacimiento
-      if (value > fechaActual) return 'No puede ser futura.'
-
-      const nacimiento = new Date(value)
-      let edad = hoy.getFullYear() - nacimiento.getFullYear()
-      const m = hoy.getMonth() - nacimiento.getMonth()
-      const d = hoy.getDate() - nacimiento.getDate()
-      if (m < 0 || (m === 0 && d < 0)) edad--
-
-      if (edad > 120) return 'Edad no puede ser mayor a 120 años.'
-      if (nuevoRol !== 'paciente' && edad < 22) return 'Edad no puede ser menor a 22 años.'
-      return ''
-    })()
-
-    const token = localStorage.getItem('token')
-    const campos = ['cedula', 'telefono', 'username']
-    const nuevosErrores = {}
-
-    if (token) {
-      try {
-        const res = await axios.get('http://localhost:8000/usuarios', {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-
-        for (const campo of campos) {
-          const valor = form[campo]
-          if (valor?.length >= 3) {
-            const duplicado = res.data.find(u => u[campo] === valor)
-
-            if (duplicado) {
-              const unoEsPaciente = nuevoRol === 'paciente' || duplicado.role === 'paciente'
-              const ambosPacientes = nuevoRol === 'paciente' && duplicado.role === 'paciente'
-
-              if (!unoEsPaciente || ambosPacientes) {
-                nuevosErrores[campo] = `${campo[0].toUpperCase() + campo.slice(1)} ya está registrado para otro usuario.`
-              } else {
-                nuevosErrores[campo] = ''
-              }
-            } else {
-              nuevosErrores[campo] = ''
-            }
-          }
-        }
-
-      } catch (err) {
-        console.warn('Error validando duplicados al cambiar rol:', err)
-      }
-    }
+    const errorFecha = validarFechaCambioRol(form.fecha_nacimiento, nuevoRol);
+    const nuevosErrores = await validarDuplicadosAlCambiarRol(form, nuevoRol);
 
     setErrores(prev => ({
       ...prev,
       ...nuevosErrores,
       especialidad: '',
       fecha_nacimiento: errorFecha
-    }))
-  }
+    }));
+  };
+
 
 
 
@@ -336,98 +371,104 @@ function CrearCuenta() {
     return { horariosValidos, erroresHorario }
   }
 
+  function construirPayload(form) {
+    const payload = {
+      ...form,
+      nombre: form.nombre.toUpperCase(),
+      apellido: form.apellido.toUpperCase(),
+      direccion: form.direccion.toUpperCase(),
+      especialidad: form.especialidad?.toUpperCase() || ''
+    };
+
+    if (form.role !== 'paciente') payload.horario = form.horario;
+    if (form.role !== 'medico') delete payload.especialidad;
+
+    return payload;
+  }
+
+  function reiniciarFormulario() {
+    setForm({
+      username: '',
+      password: '',
+      nombre: '',
+      apellido: '',
+      fecha_nacimiento: '',
+      direccion: '',
+      telefono: '',
+      cedula: '',
+      role: form.role,
+      especialidad: '',
+      horario: []
+    });
+    setTouched({ fecha_nacimiento: true });
+    setErrores({});
+  }
+
+  function manejarErrorSubmit(err) {
+    console.error('Error al crear usuario:', err);
+
+    if (err.response) {
+      if (err.response.status === 400 && err.response.data?.detail) {
+        setMensajeGlobal(`Error: ${err.response.data.detail}`);
+      } else if (err.response.status === 401) {
+        setMensajeGlobal('No autorizado. Por favor inicie sesión nuevamente.');
+        localStorage.clear();
+        window.location.href = '/login';
+      } else {
+        setMensajeGlobal('Error inesperado en el servidor.');
+      }
+    } else if (err.request) {
+      setMensajeGlobal('No se recibió respuesta del servidor.');
+    } else {
+      setMensajeGlobal('Error al crear el usuario.');
+    }
+  }
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setMensajeGlobal('')
+    e.preventDefault();
+    setMensajeGlobal('');
 
-    let nuevosErrores = {}
+    const nuevosErrores = {};
     Object.entries(form).forEach(([key, value]) => {
-      const msg = validarCampo(key, value)
-      if (msg) nuevosErrores[key] = msg
-    })
+      const msg = validarCampo(key, value);
+      if (msg) nuevosErrores[key] = msg;
+    });
+
+    let horariosValidos = 0;
+    let erroresHorario = {};
+    if (form.role !== 'paciente') {
+      const resultadoHorarios = calcularHorariosValidos(form.horario);
+      horariosValidos = resultadoHorarios.horariosValidos;
+      erroresHorario = resultadoHorarios.erroresHorario;
+
+      if (horariosValidos === 0) {
+        setMensajeGlobal('Debe asignar al menos un horario válido.');
+      }
+    }
+
     setErrores(prev => ({
       ...prev,
       ...nuevosErrores,
-      horario: prev.horario
-    }))
+      horario: erroresHorario
+    }));
 
-
-    if (form.role !== 'paciente') {
-      let horariosValidos = 0
-      let erroresHorario = {}
-
-      diasSemana.forEach((dia) => {
-        const horarioDia = form.horario.find(h => h.dia === dia)
-        if (horarioDia) {
-          const { hora_inicio, hora_fin } = horarioDia
-          if (hora_inicio && hora_fin) {
-            if (hora_inicio < hora_fin) {
-              horariosValidos++
-            } else {
-              erroresHorario[dia] = 'Hora fin debe ser posterior a hora inicio.'
-            }
-          } else if (hora_inicio || hora_fin) {
-            erroresHorario[dia] = 'Ambas horas deben estar completas.'
-          }
-        }
-      })
-
-      if (horariosValidos === 0) {
-        setMensajeGlobal('Debe asignar al menos un horario válido.')
-      }
-
-      setErrores(prev => ({
-        ...prev,
-        horario: erroresHorario
-      }))
-
-    }
-    if (Object.keys(nuevosErrores).length > 0) return
-
+    if (Object.keys(nuevosErrores).length > 0) return;
 
     try {
-      const token = localStorage.getItem('token')
-      const payload = {
-        ...form,
-        nombre: form.nombre.toUpperCase(),
-        apellido: form.apellido.toUpperCase(),
-        direccion: form.direccion.toUpperCase(),
-        especialidad: form.especialidad?.toUpperCase() || ''
-      }
-
-      if (form.role !== 'paciente') payload.horario = form.horario
-      if (form.role !== 'medico') delete payload.especialidad
+      const token = localStorage.getItem('token');
+      const payload = construirPayload(form);
 
       await axios.post('http://localhost:8000/register', payload, {
         headers: { Authorization: `Bearer ${token}` }
-      })
+      });
 
-      setModalAbierto(true)
-
-      setForm({
-        username: '',
-        password: '',
-        nombre: '',
-        apellido: '',
-        fecha_nacimiento: '',
-        direccion: '',
-        telefono: '',
-        cedula: '',
-        role: form.role,
-        especialidad: '',
-        horario: []
-      })
-      setTouched({
-        fecha_nacimiento: true
-      })
-
-
-      setErrores({})
+      setModalAbierto(true);
+      reiniciarFormulario();
     } catch (err) {
-      setMensajeGlobal('Error al crear el usuario.')
+      manejarErrorSubmit(err);
     }
-  }
+  };
+
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-white to-cyan-100">
@@ -483,7 +524,7 @@ function CrearCuenta() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="flex flex-col">
-                <label className="text-gray-700 font-medium">Rol</label>
+                <label htmlFor="role" className="text-gray-700 font-medium">Rol</label>
                 <select name="role" value={form.role} onChange={handleRoleChange} className="border rounded px-4 py-2">
                   {rolesDisponibles.map(r => (
                     <option key={r} value={r}>
@@ -495,7 +536,7 @@ function CrearCuenta() {
               </div>
 
               <div className="flex flex-col">
-                <label className="text-gray-700 font-medium">Usuario</label>
+                <label htmlFor="username" className="text-gray-700 font-medium">Usuario</label>
                 <input
                   name="username"
                   value={form.username}
@@ -506,7 +547,7 @@ function CrearCuenta() {
               </div>
 
               <div className="flex flex-col">
-                <label className="text-gray-700 font-medium">Contraseña</label>
+                <label htmlFor="password" className="text-gray-700 font-medium">Contraseña</label>
                 <input
                   type="password"
                   name="password"
@@ -520,7 +561,7 @@ function CrearCuenta() {
 
             {form.role === 'medico' && (
               <div className="flex flex-col">
-                <label className="text-gray-700 font-medium">Especialidad</label>
+                <label htmlFor="especialidad" className="text-gray-700 font-medium">Especialidad</label>
                 <select onChange={handleEspecialidadChange} className="border rounded px-4 py-2">
                   <option value="">Seleccionar especialidad</option>
                   {especialidades.map(e => (
@@ -548,7 +589,7 @@ function CrearCuenta() {
                   const horarioDia = form.horario.find(h => h.dia === dia) || {}
                   const errorDia = errores.horario?.[dia]
                   return (
-                    <div key={i} className="mb-2">
+                    <div key={dia} className="mb-2">
                       <div className="flex items-center space-x-2">
                         <label className="w-24 capitalize text-gray-600">{dia}</label>
 

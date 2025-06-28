@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { format } from 'date-fns'
-
+import PropTypes from 'prop-types'
 import {
+  format,
   addMonths,
   startOfMonth,
   endOfMonth,
@@ -9,8 +9,8 @@ import {
   startOfWeek,
   endOfWeek,
   isBefore,
-  isSameDay
 } from 'date-fns'
+
 import { es } from 'date-fns/locale'
 
 function CalendarMonthView({ medico, citas, onSelectDay }) {
@@ -65,10 +65,10 @@ function CalendarMonthView({ medico, citas, onSelectDay }) {
 
   return (
     <div className="space-y-8">
-      {meses.map((mes, i) => {
+      {meses.map((mes) => {
         const hoy = new Date()
         hoy.setHours(0, 0, 0, 0)
-        const inicioMes = i === 0 ? hoy : startOfMonth(mes)
+        const inicioMes = startOfMonth(mes)
         const finMes = endOfMonth(mes)
 
         const dias = eachDayOfInterval({
@@ -77,13 +77,13 @@ function CalendarMonthView({ medico, citas, onSelectDay }) {
         })
 
         return (
-          <div key={i}>
+          <div key={mes.toISOString()}>
             <h3 className="text-lg font-bold text-teal-700 mb-2">
               {format(mes, 'MMMM yyyy', { locale: es })}
             </h3>
             <div className="grid grid-cols-7 gap-1 text-sm text-center">
-              {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((d, i) => (
-                <div key={i} className="font-semibold">{d}</div>
+              {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(d => (
+                <div key={d} className="font-semibold">{d}</div>
               ))}
 
               {dias.map(dia => {
@@ -98,7 +98,7 @@ function CalendarMonthView({ medico, citas, onSelectDay }) {
 
                 return (
                   <button
-                    key={dia}
+                    key={dia.toISOString()}
                     onClick={() => onSelectDay(dia)}
                     disabled={!esDelMes || !esFuturoOHoy}
                     className={`aspect-square rounded ${color || 'bg-gray-200'
@@ -115,6 +115,27 @@ function CalendarMonthView({ medico, citas, onSelectDay }) {
       })}
     </div>
   )
+
+}
+
+CalendarMonthView.propTypes = {
+  medico: PropTypes.shape({
+    horario: PropTypes.arrayOf(
+      PropTypes.shape({
+        dia: PropTypes.string.isRequired,
+        hora_inicio: PropTypes.string.isRequired,
+        hora_fin: PropTypes.string.isRequired,
+      })
+    ),
+  }).isRequired,
+  citas: PropTypes.arrayOf(
+    PropTypes.shape({
+      fecha: PropTypes.string.isRequired,
+      hora_inicio: PropTypes.string.isRequired,
+      hora_fin: PropTypes.string.isRequired,
+    })
+  ).isRequired,
+  onSelectDay: PropTypes.func.isRequired,
 }
 
 export default CalendarMonthView

@@ -28,7 +28,12 @@ function LoginPage() {
             localStorage.setItem('role', role)
             navigate('/dashboard')
         } catch (err) {
-            setError('Credenciales inválidas')
+            console.error('Error en login:', err)
+            if (err.response?.status === 401) {
+                setError('Credenciales inválidas')
+            } else {
+                setError('Ocurrió un error al iniciar sesión. Intente de nuevo.')
+            }
         }
     }
 
@@ -43,7 +48,7 @@ function LoginPage() {
                 </div>
                 <h2 className="text-2xl font-semibold text-center text-gray-700 mb-4">Iniciar Sesión</h2>
                 {error && <p className="text-red-600 text-sm mb-3 text-center">{error}</p>}
-                <label className="block mb-2 text-gray-700 font-medium">Usuario</label>
+                <label htmlFor="username" className="block mb-2 text-gray-700 font-medium">Usuario</label>
                 <input
                     type="text"
                     placeholder="Ingrese su usuario"
@@ -51,7 +56,7 @@ function LoginPage() {
                     onChange={e => setUsername(e.target.value)}
                     className="w-full border border-gray-300 rounded px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
-                <label className="block mb-2 text-gray-700 font-medium">Contraseña</label>
+                <label htmlFor="password" className="block mb-2 text-gray-700 font-medium">Contraseña</label>
                 <input
                     type="password"
                     placeholder="Ingrese su contraseña"

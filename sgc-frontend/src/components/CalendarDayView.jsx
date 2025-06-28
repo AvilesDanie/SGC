@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import PropTypes from 'prop-types'
 import api from '../api/axiosConfig'
 
 function CalendarDayView({ fecha, medico, citas, setCitas, onVolver, paciente }) {
@@ -123,21 +124,24 @@ function CalendarDayView({ fecha, medico, citas, setCitas, onVolver, paciente })
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 mb-6">
-                {segmentos.map((seg, i) => (
+                {segmentos.map(seg => (
                     <div
-                        key={i}
-                        className={`text-center py-2 rounded font-mono ${seg.ocupado ? 'bg-red-500 text-white' : 'bg-green-500 text-white'
-                            }`}
+                        key={`${seg.desde}-${seg.hasta}-${seg.ocupado}`}
+                        className={`text-center py-2 rounded font-mono ${seg.ocupado ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`}
                     >
                         {seg.desde} - {seg.hasta}
                     </div>
                 ))}
+
             </div>
 
             <div className="flex flex-wrap items-end gap-4 mb-4">
                 <div>
-                    <label className="block text-sm font-medium">Hora inicio</label>
+                    <label htmlFor="hora-inicio" className="block text-sm font-medium">
+                        Hora inicio
+                    </label>
                     <input
+                        id="hora-inicio"
                         type="time"
                         value={inicio}
                         min={horario.hora_inicio}
@@ -146,9 +150,13 @@ function CalendarDayView({ fecha, medico, citas, setCitas, onVolver, paciente })
                         className="input"
                     />
                 </div>
+
                 <div>
-                    <label className="block text-sm font-medium">Hora fin</label>
+                    <label htmlFor="hora-fin" className="block text-sm font-medium">
+                        Hora fin
+                    </label>
                     <input
+                        id="hora-fin"
                         type="time"
                         value={fin}
                         min={inicio || horario.hora_inicio}
@@ -157,6 +165,7 @@ function CalendarDayView({ fecha, medico, citas, setCitas, onVolver, paciente })
                         className="input"
                     />
                 </div>
+
 
                 <button
                     disabled={!inicio || !fin}
@@ -190,6 +199,32 @@ function CalendarDayView({ fecha, medico, citas, setCitas, onVolver, paciente })
             )}
         </div>
     )
+}
+
+CalendarDayView.propTypes = {
+    fecha: PropTypes.instanceOf(Date).isRequired,
+    medico: PropTypes.shape({
+        id: PropTypes.number.isRequired,
+        horario: PropTypes.arrayOf(
+            PropTypes.shape({
+                dia: PropTypes.string.isRequired,
+                hora_inicio: PropTypes.string.isRequired,
+                hora_fin: PropTypes.string.isRequired,
+            })
+        ),
+    }).isRequired,
+    citas: PropTypes.arrayOf(
+        PropTypes.shape({
+            fecha: PropTypes.string.isRequired,
+            hora_inicio: PropTypes.string.isRequired,
+            hora_fin: PropTypes.string.isRequired,
+        })
+    ).isRequired,
+    setCitas: PropTypes.func.isRequired,
+    onVolver: PropTypes.func.isRequired,
+    paciente: PropTypes.shape({
+        id: PropTypes.number.isRequired,
+    }),
 }
 
 export default CalendarDayView

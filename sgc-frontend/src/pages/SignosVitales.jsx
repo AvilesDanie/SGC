@@ -7,8 +7,6 @@ const estadoToColor = {
     para_signos: 'bg-yellow-200 border-yellow-600',
     en_espera: 'bg-blue-200 border-blue-600'
 }
-
-
 function SignosVitales() {
     const [role, setRole] = useState(null)
     const [citas, setCitas] = useState([])
@@ -57,7 +55,7 @@ function SignosVitales() {
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data)
             if (data.evento === "actualizacion_citas") {
-                cargarCitas() // recarga las citas cuando hay cambios
+                cargarCitas()
             }
         }
 
@@ -66,7 +64,6 @@ function SignosVitales() {
 
         return () => ws.close()
     }, [])
-
 
     const filtrar = (cita) => {
         const paciente = pacientes[cita.paciente_id]
@@ -79,8 +76,6 @@ function SignosVitales() {
 
         return matchCedula && matchNombre && matchMedico
     }
-
-
     const cargarCitas = async () => {
         try {
             const res = await api.get('/citas/hoy')
@@ -111,7 +106,7 @@ function SignosVitales() {
                         const res = await api.get(`/signos-vitales/cita/${cita.id}`)
                         signosData[cita.id] = res.data
                     } catch {
-                        // No hay signos vitales
+
                     }
                 })
             ])
@@ -125,8 +120,6 @@ function SignosVitales() {
         }
     }
 
-    
-
     const abrirModal = (cita) => {
         setModalCita(cita)
         setSignos({
@@ -138,41 +131,34 @@ function SignosVitales() {
         })
         setErrores({})
     }
-
     const validarCampo = (name, value) => {
-        switch (name) {
-            case 'presion_arterial':
-                if (!value) return 'Campo obligatorio.'
-                if (!/^\d{2,3}\/\d{2,3}$/.test(value)) return 'Formato inválido (ej: 120/80).'
-                const [sistolica, diastolica] = value.split('/').map(Number)
-                if (sistolica < 60 || sistolica > 140) return 'Sistólica debe ser entre 60 y 140.'
-                if (diastolica < 30 || diastolica > 110) return 'Diastólica debe ser entre 30 y 110.'
-                return ''
-            case 'peso':
-                if (!value) return 'Campo obligatorio.'
-                const pesoNum = parseFloat(value)
-                if (pesoNum < 2.5 || pesoNum > 120) return 'Peso debe ser entre 2.5 y 120 kg.'
-                return ''
-            case 'talla':
-                if (!value) return 'Campo obligatorio.'
-                const tallaNum = parseFloat(value)
-                if (tallaNum < 50 || tallaNum > 220) return 'Talla debe ser entre 50 cm y 220 cm.'
-                return ''
-            case 'temperatura':
-                if (!value) return 'Campo obligatorio.'
-                const tempNum = parseFloat(value)
-                if (tempNum < 35 || tempNum > 41.5) return 'Temperatura debe ser entre 35 y 41.5 °C.'
-                return ''
-            case 'saturacion_oxigeno':
-                if (!value) return 'Campo obligatorio.'
-                const satNum = parseFloat(value)
-                if (satNum < 50 || satNum > 100) return 'Saturación debe ser entre 50 y 100 %.'
-                return ''
-            default:
-                return ''
-        }
-    }
+        if (!value) return 'Campo obligatorio.';
 
+        if (name === 'presion_arterial') {
+            if (!/^\d{2,3}\/\d{2,3}$/.test(value)) return 'Formato inválido (ej: 120/80).';
+            const [sistolica, diastolica] = value.split('/').map(Number);
+            if (sistolica < 60 || sistolica > 140) return 'Sistólica debe ser entre 60 y 140.';
+            if (diastolica < 30 || diastolica > 110) return 'Diastólica debe ser entre 30 y 110.';
+            return '';
+        }
+
+        const config = {
+            peso: { min: 2.5, max: 120, label: 'Peso', unidad: 'kg' },
+            talla: { min: 50, max: 220, label: 'Talla', unidad: 'cm' },
+            temperatura: { min: 35, max: 41.5, label: 'Temperatura', unidad: '°C' },
+            saturacion_oxigeno: { min: 50, max: 100, label: 'Saturación', unidad: '%' }
+        };
+
+        if (config[name]) {
+            const { min, max, label, unidad } = config[name];
+            const num = parseFloat(value);
+            if (isNaN(num)) return `${label} debe ser numérico.`;
+            if (num < min || num > max) return `${label} debe ser entre ${min} y ${max} ${unidad}.`;
+            return '';
+        }
+
+        return '';
+    };
 
     const handleChange = (e) => {
         const { name, value } = e.target
@@ -197,7 +183,7 @@ function SignosVitales() {
             const peso = parseFloat(pesoStr)
             const talla = parseFloat(tallaStr)
             const imc = peso / Math.pow(talla / 100, 2)
-            const imcRounded = Math.round(imc * 10) / 10 
+            const imcRounded = Math.round(imc * 10) / 10
 
             if (imcRounded < 10 || imcRounded > 60) {
                 const imcText = `⚠️ IMC fuera de rango (${imcRounded}).`
@@ -220,18 +206,11 @@ function SignosVitales() {
                 delete nuevosErrores.talla
             }
 
-
-
         }
 
         setSignos(nuevoSigno)
         setErrores(nuevosErrores)
     }
-
-
-
-
-
 
     const guardarSignos = async () => {
         const nuevosErrores = {}
@@ -241,8 +220,6 @@ function SignosVitales() {
             if (msg) nuevosErrores[campo] = msg
         })
 
-        
-
         setErrores(nuevosErrores)
         if (Object.keys(nuevosErrores).length > 0) return
 
@@ -251,7 +228,9 @@ function SignosVitales() {
             setModalCita(null)
             cargarCitas()
         } catch (err) {
-            alert('Error al guardar signos')
+            const mensaje = err?.response?.data?.detail || 'Ocurrió un error al guardar los signos vitales.';
+            alert(mensaje);
+
         }
     }
 
@@ -260,10 +239,8 @@ function SignosVitales() {
     return (
         <div className="flex min-h-screen bg-gradient-to-br from-white to-cyan-100">
             <Sidebar role={role} />
-
             <div className="flex-1 p-8 ml-64">
                 <h1 className="text-3xl font-bold text-teal-800 mb-6">Signos Vitales</h1>
-
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     <input
                         type="text"
@@ -287,7 +264,6 @@ function SignosVitales() {
                         className="input"
                     />
                 </div>
-
                 <div className="space-y-4">
                     {[...citas].filter(filtrar).length === 0 ? (
                         <div className="text-center mt-20 text-2xl text-gray-500 font-semibold">
@@ -311,13 +287,31 @@ function SignosVitales() {
                                 return (
                                     <div
                                         key={cita.id}
-                                        className={`border-l-8 shadow ${estadoToColor[cita.estado.replace(' ', '_')] || 'bg-gray-100 border'} p-4 rounded`}
+                                        className={`border-l-8 shadow ${estadoToColor[cita.estado.replace(' ', '_')] || 'bg-gray-100 border'
+                                            } p-4 rounded`}
                                     >
+
                                         <div className="flex flex-col md:flex-row justify-between gap-4">
                                             <div className="flex-1">
                                                 <p><strong>Paciente:</strong> {paciente?.nombre} {paciente?.apellido}</p>
-                                                <p><strong>Cédula:</strong> {paciente?.cedula}</p>
-                                                <p><strong>Médico:</strong> {medico?.nombre} {medico?.apellido} ({especialidad || '—'})</p>
+                                                <p>
+                                                    <strong>
+                                                        Cédula:
+                                                    </strong>
+                                                    {paciente?.cedula}
+                                                </p>
+                                                <p>
+                                                    <strong>
+                                                        Médico:
+                                                    </strong>
+                                                    {' '}
+                                                    <span>
+                                                        {`${medico?.nombre ?? ''} ${medico?.apellido ?? ''}`}{" "}
+                                                        {especialidad ? `(${especialidad})` : "(\u2014)"}
+                                                    </span>
+                                                </p>
+
+
                                                 <p><strong>Hora:</strong> {cita.hora_inicio} - {cita.hora_fin}</p>
                                                 <p><strong>Estado:</strong> {cita.estado}</p>
 
@@ -331,13 +325,30 @@ function SignosVitales() {
                                                 )}
                                             </div>
 
-                                            {signosCita && signosCita.signos_vitales && (
+                                            {signosCita?.signos_vitales && (
                                                 <div className="flex-1 border-l md:border-l-2 border-gray-300 pl-4 text-sm text-gray-700">
-                                                    <p><strong>Presión arterial:</strong> {signosCita.signos_vitales.presion_arterial}</p>
+                                                    <p>
+                                                        <strong>
+                                                            Presión arterial:
+                                                        </strong>
+                                                        {signosCita.signos_vitales.presion_arterial}
+                                                    </p>
                                                     <p><strong>Peso:</strong> {signosCita.signos_vitales.peso} kg</p>
                                                     <p><strong>Talla:</strong> {signosCita.signos_vitales.talla} cm</p>
-                                                    <p><strong>Temperatura:</strong> {signosCita.signos_vitales.temperatura} °C</p>
-                                                    <p><strong>Saturación de oxígeno:</strong> {signosCita.signos_vitales.saturacion_oxigeno} %</p>
+                                                    <p>
+                                                        <strong>
+                                                            Temperatura:
+                                                        </strong>
+                                                        {signosCita.signos_vitales.temperatura}
+                                                        °C
+                                                    </p>
+                                                    <p>
+                                                        <strong>
+                                                            Saturación de oxígeno:
+                                                        </strong>
+                                                        {signosCita.signos_vitales.saturacion_oxigeno}
+                                                        %
+                                                    </p>
                                                 </div>
                                             )}
                                         </div>
@@ -346,12 +357,10 @@ function SignosVitales() {
                             })
                     )}
                 </div>
-
-
             </div>
 
             {modalCita && (
-                <div className="fixed inset-0 bg-/50 flex justify-center items-center z-50">
+                <div className="fixed inset-0 bg-gray-800/50 flex justify-center items-center z-50">
                     <div className="bg-white p-6 w-full max-w-lg rounded shadow-lg">
                         <h3 className="text-2xl font-bold mb-4">Ingresar Signos Vitales</h3>
                         <div className="space-y-2">
@@ -385,7 +394,6 @@ function SignosVitales() {
                             ))}
 
                         </div>
-
                         <div className="mt-4 flex justify-end space-x-2">
                             <button onClick={guardarSignos} className="bg-green-600 text-white px-4 py-2 rounded">Guardar</button>
                             <button onClick={() => setModalCita(null)} className="bg-gray-400 px-4 py-2 rounded">Cancelar</button>

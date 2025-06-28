@@ -31,6 +31,8 @@ function EditarExpediente() {
   const [expediente, setExpediente] = useState([])
   const [nota, setNota] = useState('')
   const navigate = useNavigate()
+  const [errorMensaje, setErrorMensaje] = useState('');
+
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -71,10 +73,14 @@ function EditarExpediente() {
       })
       await api.put(`/citas/${cita.id}/estado`, { estado: 'terminado' })
 
-      navigate('/dashboard/expedientes') 
+      navigate('/dashboard/expedientes')
     } catch (err) {
-      alert('Error al guardar expediente')
+      setErrorMensaje('Ocurrió un error al guardar el expediente. Por favor inténtelo de nuevo.');
+      setErrorDetalle(err?.message || 'Error desconocido');
     }
+
+
+
   }
 
 
@@ -119,24 +125,37 @@ function EditarExpediente() {
             >
               Guardar Nota
             </button>
+            {errorMensaje && (
+              <div className="mt-4 text-red-600 font-semibold">
+                {errorMensaje}
+                {process.env.NODE_ENV === 'development' && (
+                  <pre className="text-xs mt-2">{String(errorDetalle)}</pre>
+                )}
+              </div>
+            )}
+
+
           </div>
         </div>
 
         <div className="w-[400px] p-4 border-l border-gray-300 bg-white overflow-y-scroll h-screen sticky top-0">
           <h2 className="text-2xl font-bold text-teal-800 mb-4">🗂 Historial</h2>
           <div className="space-y-4">
-            {expediente.map((entry, index) => (
-              <div key={index} className="bg-gray-100 p-4 rounded shadow-sm">
+            {expediente.map(entry => (
+              <div key={entry.id} className="bg-gray-100 p-4 rounded shadow-sm">
                 <p className="text-sm text-gray-500">📅 {new Date(entry.fecha).toLocaleString()}</p>
                 <div className="mt-2 text-sm space-y-2">
-                  {entry.contenido.split('\n\n').map((section, idx) => {
-                    if (section.startsWith('🩺 Signos vitales:')) {
-                      try {
-                        const jsonPart = section.split('🩺 Signos vitales:\n')[1]
-                        const datos = JSON.parse(jsonPart)
+                  {(() => {
+                    const signosMatch = entry.contenido.match(/🩺 Signos vitales:\n([\s\S]*?)\n\n/)
+                    const notaMatch = entry.contenido.match(/📝 Nota del médico:\n([\s\S]*)/)
 
-                        return (
-                          <div key={idx} className="bg-white p-3 rounded border">
+                    const bloques = []
+
+                    if (signosMatch) {
+                      try {
+                        const datos = JSON.parse(signosMatch[1])
+                        bloques.push(
+                          <div key="signos" className="bg-white p-3 rounded border">
                             <h3 className="font-semibold mb-1">🩺 Signos Vitales:</h3>
                             <p><strong>Presión arterial:</strong> {datos.presion_arterial}</p>
                             <p><strong>Peso:</strong> {datos.peso} kg</p>
@@ -146,21 +165,30 @@ function EditarExpediente() {
                           </div>
                         )
                       } catch (e) {
-                        return <pre key={idx} className="whitespace-pre-wrap">{section}</pre>
+                        console.warn("Error parseando signos vitales:", e);
+                        bloques.push(
+                          <pre key="signos-error" className="whitespace-pre-wrap break-words w-full max-w-full">
+                            {signosMatch[1]}
+                          </pre>
+                        );
                       }
-                    } else if (section.startsWith('📝 Nota del médico:')) {
-                      const nota = section.replace('📝 Nota del médico:\n', '')
-                      return (
-                        <div key={idx} className="bg-white p-3 rounded border">
+                    }
+
+                    if (notaMatch) {
+                      bloques.push(
+                        <div key="nota" className="bg-white p-3 rounded border">
                           <h3 className="font-semibold mb-1">📝 Nota del médico:</h3>
-                          <p>{nota}</p>
+                          <pre className="whitespace-pre-wrap break-words w-full max-w-full">
+                            {notaMatch[1]}
+                          </pre>
                         </div>
                       )
-                    } else {
-                      return <pre key={idx} className="whitespace-pre-wrap">{section}</pre>
                     }
-                  })}
+
+                    return bloques
+                  })()}
                 </div>
+
               </div>
             ))}
           </div>

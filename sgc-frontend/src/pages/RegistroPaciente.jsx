@@ -54,35 +54,44 @@ function RegistroPaciente() {
   }
 
   const validarCampo = (name, value, touched = true) => {
-    const hoy = new Date()
-    const fechaActual = hoy.toISOString().split('T')[0]
+    const hoy = new Date();
+    const fechaActual = hoy.toISOString().split("T")[0];
 
-    switch (name) {
-      case 'cedula':
-        if (!value) return 'La cédula es obligatoria.'
-        if (!/^\d{10}$/.test(value)) return 'Debe tener 10 dígitos.'
-        if (!validarCedulaEcuatoriana(value)) return 'Cédula no válida en Ecuador.'
-        return ''
-      case 'nombre':
-      case 'apellido':
-        if (!value) return `El ${name} es obligatorio.`
-        if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(value)) return 'Solo letras y espacios.'
-        return ''
-      case 'telefono':
-        if (!value) return 'El teléfono es obligatorio.'
-        if (!/^09\d{8}$/.test(value)) return 'Debe comenzar con 09 y tener 10 dígitos.'
-        return ''
-      case 'direccion':
-        if (!value) return 'La dirección es obligatoria.'
-        return ''
-      case 'fecha_nacimiento':
-        if (!value && touched) return 'La fecha es obligatoria.'
-        if (value > fechaActual) return 'No puede ser futura.'
-        return ''
-      default:
-        return ''
-    }
-  }
+    const reglas = {
+      cedula: () => {
+        if (!value) return "La cédula es obligatoria.";
+        if (!/^\d{10}$/.test(value)) return "Debe tener 10 dígitos.";
+        if (!validarCedulaEcuatoriana(value)) return "Cédula no válida en Ecuador.";
+        return "";
+      },
+      nombre: () => validarTextoRequerido(value, "El nombre"),
+      apellido: () => validarTextoRequerido(value, "El apellido"),
+      telefono: () => {
+        if (!value) return "El teléfono es obligatorio.";
+        if (!/^09\d{8}$/.test(value)) return "Debe comenzar con 09 y tener 10 dígitos.";
+        return "";
+      },
+      direccion: () => {
+        if (!value) return "La dirección es obligatoria.";
+        return "";
+      },
+      fecha_nacimiento: () => {
+        if (!value && touched) return "La fecha es obligatoria.";
+        if (value > fechaActual) return "No puede ser futura.";
+        return "";
+      }
+    };
+
+    return reglas[name]?.() || "";
+
+  };
+
+  const validarTextoRequerido = (valor, campo) => {
+    if (!valor) return `${campo} es obligatorio.`;
+    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(valor)) return "Solo letras y espacios.";
+    return "";
+  };
+
 
 
   const handleSubmit = async (e) => {
@@ -149,8 +158,13 @@ function RegistroPaciente() {
       })
       setErrores({})
     } catch (err) {
-      setError('Error al registrar el paciente.')
+      setError(
+        err?.response?.data?.detail ||
+        err?.message ||
+        'Error al registrar el paciente. Por favor, intente nuevamente.'
+      );
     }
+
   }
 
 

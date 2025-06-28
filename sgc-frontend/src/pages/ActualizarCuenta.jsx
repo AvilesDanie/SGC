@@ -148,7 +148,7 @@ function ActualizarCuenta() {
               <h3 className="text-xl font-semibold mb-4">Cambiar nombre de usuario</h3>
               <form onSubmit={submitUsernameChange} className="space-y-4">
                 <div>
-                  <label className="block text-gray-700">Nuevo nombre de usuario</label>
+                  <label htmlFor="nuevo_username" className="block text-gray-700">Nuevo nombre de usuario</label>
                   <input
                     type="text"
                     name="nuevo_username"
@@ -158,7 +158,7 @@ function ActualizarCuenta() {
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-700">Contraseña actual</label>
+                  <label htmlFor="username_password_actual" className="block text-gray-700">Contraseña actual</label>
                   <input
                     type="password"
                     name="password_actual"
@@ -194,7 +194,7 @@ function ActualizarCuenta() {
               <h3 className="text-xl font-semibold mb-4">Cambiar contraseña</h3>
               <form onSubmit={submitPasswordChange} className="space-y-4">
                 <div>
-                  <label className="block text-gray-700">Contraseña actual</label>
+                  <label htmlFor="password_actual" className="block text-gray-700">Contraseña actual</label>
                   <input
                     type="password"
                     name="password_actual"
@@ -204,7 +204,7 @@ function ActualizarCuenta() {
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-700">Nueva contraseña</label>
+                  <label htmlFor="nueva_password" className="block text-gray-700">Nueva contraseña</label>
                   <input
                     type="password"
                     name="nueva_password"

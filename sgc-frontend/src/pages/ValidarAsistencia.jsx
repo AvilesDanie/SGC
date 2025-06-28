@@ -100,7 +100,7 @@ function ValidarAsistencia() {
     }
   }
 
-  
+
 
   const filtrar = (cita) => {
     const paciente = pacientes[cita.paciente_id]
@@ -120,8 +120,10 @@ function ValidarAsistencia() {
       await api.put(`/citas/${id}/para-signos`)
       await cargarCitas()
     } catch (err) {
-      alert('No se pudo actualizar la cita.')
+      const mensaje = err?.response?.data?.detail || err?.message || 'Error desconocido.';
+      alert(`No se pudo actualizar la cita.\n${mensaje}`);
     }
+
   }
 
   if (loading) return <div className="p-6">Cargando...</div>
@@ -163,8 +165,8 @@ function ValidarAsistencia() {
             <option value="agendado">Agendado</option>
             <option value="para_signos">Para signos</option>
             <option value="en_espera">En espera</option>
-            
-            
+
+
             <option value="terminado">Terminado</option>
           </select>
         </div>
@@ -194,9 +196,24 @@ function ValidarAsistencia() {
                   className={`border-l-8 shadow ${estadoToColor[normalizarEstado(cita.estado)] || 'bg-gray-100 border'} p-4 rounded`}
                 >
                   <p><strong>Paciente:</strong> {paciente?.nombre} {paciente?.apellido}</p>
-                  <p><strong>Cédula:</strong> {paciente?.cedula}</p>
+                  <p>
+                    <strong>
+                      Cédula:
+                    </strong>
+                    {paciente?.cedula}
+                  </p>
                   <p><strong>Hora:</strong> {cita.hora_inicio} - {cita.hora_fin}</p>
-                  <p><strong>Médico:</strong> {medico?.nombre} {medico?.apellido} ({especialidad || '—'})</p>
+                  <p>
+                    <strong>
+                      Médico:
+                    </strong>
+                    {' '}
+                    {medico?.nombre} {medico?.apellido}{' '}
+                    <span>
+                      ({especialidad || '\u2014'})
+                    </span>
+                  </p>
+
                   <p><strong>Estado:</strong> {cita.estado.replace('_', ' ')}</p>
 
                   {cita.estado === 'agendado' && role === 'administrativo' && (

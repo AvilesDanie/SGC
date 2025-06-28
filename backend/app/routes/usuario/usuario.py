@@ -19,7 +19,119 @@ from sqlalchemy.orm import joinedload
 
 router = APIRouter()
 
+def validate_permissions(current_user, user):
+    if not current_user:
+        return
+    role = current_user["role"]
+    if role == RoleEnum.administrativo and user.role != RoleEnum.paciente:
+        raise HTTPException(status_code=403, detail="Solo se puede registrar pacientes")
+    if role != RoleEnum.super_admin and role != RoleEnum.administrativo:
+        raise HTTPException(status_code=403, detail="No autorizado a registrar usuarios")
 
+def check_existing_username(session, username):
+    if session.exec(select(User).where(User.username == username)).first():
+        raise HTTPException(status_code=400, detail="El nombre de usuario ya está en uso")
+
+def check_duplicate_cedula(session, user):
+    if user.role != RoleEnum.paciente:
+        return
+    cedula_duplicada = session.exec(
+        select(User).where(
+            (User.cedula == user.cedula) & (User.role == RoleEnum.paciente)
+        )
+    ).first()
+    if cedula_duplicada:
+        raise HTTPException(status_code=400, detail="Ya existe un paciente con esta cédula.")
+
+def validate_user_fields(user):
+    if not re.match(r"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$", user.nombre):
+        raise HTTPException(status_code=400, detail="El nombre contiene caracteres inválidos")
+    if not re.match(r"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$", user.apellido):
+        raise HTTPException(status_code=400, detail="El apellido contiene caracteres inválidos")
+    if " " in user.password:
+        raise HTTPException(status_code=400, detail="La contraseña no puede contener espacios.")
+    if user.role != RoleEnum.paciente:
+        if not user.horario or not any(h.hora_inicio and h.hora_fin for h in user.horario):
+            raise HTTPException(status_code=400, detail="Debe tener al menos un horario laboral válido.")
+
+def handle_especialidad(session, user):
+    if user.role != RoleEnum.medico:
+        return None
+    if not user.especialidad:
+        raise HTTPException(status_code=400, detail="La especialidad es obligatoria para médicos")
+
+    especialidad = session.exec(
+        select(Especialidad).where(Especialidad.nombre == user.especialidad)
+    ).first()
+    if not especialidad:
+        especialidad = Especialidad(nombre=user.especialidad)
+        session.add(especialidad)
+        session.commit()
+        session.refresh(especialidad)
+    return especialidad.id
+
+def generate_numero_filiacion(session, user):
+    if user.role != RoleEnum.paciente:
+        return None
+    count = session.exec(select(User).where(User.role == RoleEnum.paciente)).count()
+    return f"PAC-{count + 1:05d}"
+
+def create_horarios(session, nuevo_usuario, user):
+    if user.role == RoleEnum.paciente or not user.horario:
+        return
+    for h in user.horario:
+        horario = HorarioLaboral(
+            user_id=nuevo_usuario.id,
+            dia=h.dia,
+            hora_inicio=h.hora_inicio,
+            hora_fin=h.hora_fin
+        )
+        session.add(horario)
+    session.commit()
+
+def actualizar_campos_basicos(usuario: User, datos: UserUpdate):
+    datos_dict = datos.dict(exclude_unset=True)
+    for field, value in datos_dict.items():
+        if field not in {"password", "especialidad", "horario"}:
+            setattr(usuario, field, value)
+
+
+def manejar_password(usuario: User, datos: UserUpdate):
+    if datos.password and datos.password.strip():
+        usuario.hashed_password = get_password_hash(datos.password)
+
+
+def manejar_especialidad(session: Session, usuario: User, datos: UserUpdate):
+    if datos.role == RoleEnum.medico and datos.especialidad:
+        especialidad = session.exec(
+            select(Especialidad).where(Especialidad.nombre == datos.especialidad)
+        ).first()
+        if not especialidad:
+            especialidad = Especialidad(nombre=datos.especialidad)
+            session.add(especialidad)
+            session.commit()
+            session.refresh(especialidad)
+        usuario.especialidad_id = especialidad.id
+    else:
+        usuario.especialidad_id = None
+
+
+def manejar_horarios(session: Session, usuario: User, datos: UserUpdate):
+    if datos.role == RoleEnum.paciente or datos.horario is None:
+        return
+
+    session.exec(delete(HorarioLaboral).where(HorarioLaboral.user_id == usuario.id))
+    session.commit()
+
+    for item in datos.horario:
+        nuevo_horario = HorarioLaboral(
+            user_id=usuario.id,
+            dia=item.dia,
+            hora_inicio=item.hora_inicio,
+            hora_fin=item.hora_fin
+        )
+        session.add(nuevo_horario)
+    session.commit()
 
 
 
@@ -37,92 +149,42 @@ def register_user(
     session: Session = Depends(get_session),
     current_user: Optional[dict] = Depends(get_current_user_optional)
 ):
-    if current_user:
-        if current_user["role"] == RoleEnum.administrativo:
-            if user.role != RoleEnum.paciente:
-                raise HTTPException(status_code=403, detail="Solo se puede registrar pacientes")
-        else:
-            if current_user["role"] != RoleEnum.super_admin:
-                raise HTTPException(status_code=403, detail="Solo el super_admin puede crear este tipo de usuarios")
-    
-    if session.exec(select(User).where(User.username == user.username)).first():
-        raise HTTPException(status_code=400, detail="El nombre de usuario ya está en uso")
+    validate_permissions(current_user, user)
+    check_existing_username(session, user.username)
+    check_duplicate_cedula(session, user)
 
-    if user.role == RoleEnum.paciente:
-        cedula_duplicada = session.exec(
-            select(User).where((User.cedula == user.cedula) & (User.role == RoleEnum.paciente))
-        ).first()
-        if cedula_duplicada:
-            raise HTTPException(status_code=400, detail="Ya existe un paciente con esta cédula.")
-    
-    especialidad_id = None
+    validate_user_fields(user)
 
-    if user.role == RoleEnum.medico:
-        if not user.especialidad:
-            raise HTTPException(status_code=400, detail="La especialidad es obligatoria para médicos")
-        
-        especialidad = session.exec(
-            select(Especialidad).where(Especialidad.nombre == user.especialidad)
-        ).first()
-        if not especialidad:
-            especialidad = Especialidad(nombre=user.especialidad)
-            session.add(especialidad)
-            session.commit()
-            session.refresh(especialidad)
-        especialidad_id = especialidad.id
+    especialidad_id = handle_especialidad(session, user)
 
-    if not re.match(r"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$", user.nombre):
-        raise HTTPException(status_code=400, detail="El nombre contiene caracteres inválidos")
-    if not re.match(r"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$", user.apellido):
-        raise HTTPException(status_code=400, detail="El apellido contiene caracteres inválidos")
-    if " " in user.password:
-        raise HTTPException(status_code=400, detail="La contraseña no puede contener espacios.")
+    numero_filiacion = generate_numero_filiacion(session, user)
 
-    if user.role != RoleEnum.paciente and (not user.horario or not any(h.hora_inicio and h.hora_fin for h in user.horario)):
-        raise HTTPException(status_code=400, detail="El usuario debe tener al menos un horario laboral válido.")
-
-    numero_filiacion = None
-    if user.role == RoleEnum.paciente:
-        count = len(session.exec(select(User).where(User.role == RoleEnum.paciente)).all())
-        numero_filiacion = f"PAC-{count + 1:05d}"
+    nuevo_usuario = User(
+        username=user.username,
+        hashed_password=get_password_hash(user.password),
+        nombre=user.nombre,
+        apellido=user.apellido,
+        fecha_nacimiento=user.fecha_nacimiento,
+        direccion=user.direccion,
+        telefono=user.telefono,
+        cedula=user.cedula,
+        role=user.role,
+        numero_filiacion=numero_filiacion,
+        especialidad_id=especialidad_id,
+        is_active=True
+    )
 
     try:
-        nuevo_usuario = User(
-            username=user.username,
-            hashed_password=get_password_hash(user.password),
-            nombre=user.nombre,
-            apellido=user.apellido,
-            fecha_nacimiento=user.fecha_nacimiento,
-            direccion=user.direccion,
-            telefono=user.telefono,
-            cedula=user.cedula,
-            role=user.role,
-            numero_filiacion=numero_filiacion,
-            especialidad_id=especialidad_id,
-            is_active=True
-        )
-
         session.add(nuevo_usuario)
         session.commit()
         session.refresh(nuevo_usuario)
 
-        if user.role != RoleEnum.paciente and user.horario:
-            for h in user.horario:
-                horario = HorarioLaboral(
-                    user_id=nuevo_usuario.id,
-                    dia=h.dia,
-                    hora_inicio=h.hora_inicio,
-                    hora_fin=h.hora_fin
-                )
-                session.add(horario)
-            session.commit()
+        create_horarios(session, nuevo_usuario, user)
 
         return {"msg": "Usuario creado exitosamente"}
-    
     except Exception as e:
         session.rollback()
         raise HTTPException(status_code=500, detail=f"Error al registrar el usuario: {str(e)}")
-
 
 
 
@@ -159,7 +221,6 @@ def get_current_logged_user(user=Depends(get_current_user)):
         "especialidad_id": user.especialidad_id,
         "is_active": user.is_active
     }
-
 
 @router.put("/update-username")
 def update_username(
@@ -206,11 +267,8 @@ def update_password(
 @router.get("/usuarios", response_model=List[UserRead])
 def listar_usuarios(
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
 ):
-    #if current_user.role != RoleEnum.super_admin:
-    #    raise HTTPException(status_code=403, detail="Acceso denegado")
-
+    
     usuarios = session.exec(
         select(User).where(User.is_active == True).options(joinedload(User.especialidad))
     ).all()
@@ -262,46 +320,16 @@ def editar_usuario(
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-    datos_dict = datos.dict(exclude_unset=True)
-
-    for field, value in datos_dict.items():
-        if field in {"password", "especialidad", "horario"}:
-            continue
-        setattr(usuario, field, value)
-
-    if datos.password and datos.password.strip():
-        usuario.hashed_password = get_password_hash(datos.password)
-
-    if datos.role == RoleEnum.medico and datos.especialidad:
-        especialidad = session.exec(
-            select(Especialidad).where(Especialidad.nombre == datos.especialidad)
-        ).first()
-        if not especialidad:
-            especialidad = Especialidad(nombre=datos.especialidad)
-            session.add(especialidad)
-            session.commit()
-            session.refresh(especialidad)
-        usuario.especialidad_id = especialidad.id
-    else:
-        usuario.especialidad_id = None
-
+    actualizar_campos_basicos(usuario, datos)
+    manejar_password(usuario, datos)
+    manejar_especialidad(session, usuario, datos)
     session.add(usuario)
     session.commit()
-
-    if datos.role != RoleEnum.paciente and datos.horario is not None:
-        session.exec(delete(HorarioLaboral).where(HorarioLaboral.user_id == usuario.id))
-        session.commit()
-        for item in datos.horario:
-            nuevo_horario = HorarioLaboral(
-                user_id=usuario.id,
-                dia=item.dia,
-                hora_inicio=item.hora_inicio,
-                hora_fin=item.hora_fin
-            )
-            session.add(nuevo_horario)
-        session.commit()
+    manejar_horarios(session, usuario, datos)
 
     return {"message": "Usuario actualizado exitosamente"}
+
+
 
 
 

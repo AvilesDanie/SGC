@@ -211,7 +211,7 @@ function GestionUsuarios() {
 
         <div className="mb-6 flex flex-wrap md:flex-nowrap items-end gap-4">
           <div className="flex flex-col w-full md:w-1/3">
-            <label className="text-sm text-gray-600 font-medium mb-1">Nombre</label>
+            <label htmlFor={"nombre"} className="text-sm text-gray-600 font-medium mb-1">Nombre</label>
             <input
               className="border px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
               placeholder="Buscar por nombre"
@@ -221,7 +221,7 @@ function GestionUsuarios() {
           </div>
 
           <div className="flex flex-col w-full md:w-1/3">
-            <label className="text-sm text-gray-600 font-medium mb-1">Especialidad</label>
+            <label htmlFor={"especialidad"} className="text-sm text-gray-600 font-medium mb-1">Especialidad</label>
             <input
               className="border px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
               placeholder="Buscar por especialidad"
@@ -231,7 +231,7 @@ function GestionUsuarios() {
           </div>
 
           <div className="flex flex-col w-full md:w-1/3">
-            <label className="text-sm text-gray-600 font-medium mb-1">Rol</label>
+            <label htmlFor="rol" className="text-sm text-gray-600 font-medium mb-1">Rol</label>
             <select
               className="border px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
               value={filtro.rol}
@@ -250,8 +250,8 @@ function GestionUsuarios() {
         <table className="w-full text-sm bg-white rounded shadow">
           <thead className="bg-teal-600 text-white text-left">
             <tr>
-              {['Nombre', 'Usuario', 'Rol', 'Cédula', 'Filiación', 'Especialidad', 'Horario', 'Acciones'].map((h, i) => (
-                <th key={i} className="p-3">{h}</th>
+              {['Nombre', 'Usuario', 'Rol', 'Cédula', 'Filiación', 'Especialidad', 'Horario', 'Acciones'].map(h => (
+                <th key={h} className="p-3">{h}</th>
               ))}
             </tr>
           </thead>
@@ -267,9 +267,12 @@ function GestionUsuarios() {
                 <td className="p-3">
                   {u.role !== 'paciente' && u.horario?.length > 0 ? (
                     <ul className="ml-4 list-disc">
-                      {u.horario.map((h, i) => (
-                        <li key={i}>{h.dia}: {h.hora_inicio} - {h.hora_fin}</li>
+                      {u.horario.map((h) => (
+                        <li key={`${h.dia}-${h.hora_inicio}-${h.hora_fin}`}>
+                          {h.dia}: {h.hora_inicio} - {h.hora_fin}
+                        </li>
                       ))}
+
                     </ul>
                   ) : '-'}
                 </td>
@@ -340,7 +343,7 @@ function GestionUsuarios() {
 
               {formEdit.role === 'medico' && (
                 <div className="mt-6">
-                  <label className="text-sm font-medium">Especialidad</label>
+                  <label htmlFor="edit-especialidad" className="text-sm font-medium">Especialidad</label>
                   <select
                     className="input w-full mb-2"
                     value={usarOtraEspecialidad ? '__otra__' : formEdit.especialidad}

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import logo from '../assets/logo sgc.png'
+import PropTypes from 'prop-types'
 
 const menusPorRol = {
   super_admin: [
@@ -46,8 +47,8 @@ function Sidebar({ role }) {
 
       <div className="p-6 flex-1 overflow-y-auto">
         <nav className="flex flex-col space-y-2">
-          {menu.map((item, i) => (
-            <Link key={i} to={item.to} className="hover:bg-teal-700 p-2 rounded">
+          {menu.map((item) => (
+            <Link key={item.to} to={item.to} className="hover:bg-teal-700 p-2 rounded">
               {item.label}
             </Link>
           ))}
@@ -56,6 +57,7 @@ function Sidebar({ role }) {
             Actualizar Cuenta
           </Link>
         </nav>
+
       </div>
 
       <div className="p-6 border-t border-teal-700">
@@ -71,6 +73,10 @@ function Sidebar({ role }) {
       </div>
     </div>
   )
+}
+
+Sidebar.propTypes = {
+  role: PropTypes.string.isRequired,
 }
 
 export default Sidebar
