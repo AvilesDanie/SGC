@@ -3,13 +3,9 @@ import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 
-const rolesDisponibles = [
-  'medico', 'enfermero', 'administrativo', 'farmacologo', 'paciente', 'super_admin'
-]
+const rolesDisponibles = ['medico', 'enfermero', 'administrativo', 'farmacologo', 'paciente', 'super_admin']
 
-const diasSemana = [
-  'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'
-]
+const diasSemana = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
 
 function CrearCuenta() {
   const [form, setForm] = useState({
@@ -32,19 +28,10 @@ function CrearCuenta() {
   const [usarOtraEspecialidad, setUsarOtraEspecialidad] = useState(false)
   const [mensajeGlobal, setMensajeGlobal] = useState('')
   const navigate = useNavigate()
-  const [touched, setTouched] = useState({
-    fecha_nacimiento: true
-  })
+  const [touched, setTouched] = useState({fecha_nacimiento: true})
   const [modalAbierto, setModalAbierto] = useState(false)
 
-
-
-
-
-
   useEffect(() => {
-
-
     const role = localStorage.getItem('role')
     setRole(role || '')
     if (role !== 'super_admin') navigate('/dashboard')
@@ -139,9 +126,8 @@ function CrearCuenta() {
     const error = validarCampo(name, value)
     setErrores(prev => ({ ...prev, [name]: error }))
 
-    // Validar duplicados si es cédula, teléfono o username
     if (['cedula', 'telefono', 'username'].includes(name) && value.length >= 3) {
-      const token = localStorage.getItem('token')  // ✅ Obtener token de forma segura
+      const token = localStorage.getItem('token')
 
       if (!token) {
         console.warn('Token no disponible, no se puede validar duplicado')
@@ -180,7 +166,6 @@ function CrearCuenta() {
     setForm(prev => ({ ...prev, role: nuevoRol, especialidad: '', horario: [] }))
     setUsarOtraEspecialidad(false)
 
-    // Revalidar fecha_nacimiento con el nuevo rol
     const errorFecha = (() => {
       const hoy = new Date()
       const fechaActual = hoy.toISOString().split('T')[0]
@@ -200,7 +185,7 @@ function CrearCuenta() {
 
     const token = localStorage.getItem('token')
     const campos = ['cedula', 'telefono', 'username']
-    const nuevosErrores = {} // ✅ Mover esta línea aquí
+    const nuevosErrores = {}
 
     if (token) {
       try {
@@ -220,11 +205,9 @@ function CrearCuenta() {
               if (!unoEsPaciente || ambosPacientes) {
                 nuevosErrores[campo] = `${campo[0].toUpperCase() + campo.slice(1)} ya está registrado para otro usuario.`
               } else {
-                // ✅ Limpia el error si ya no aplica
                 nuevosErrores[campo] = ''
               }
             } else {
-              // ✅ Si no hay duplicado, también limpia el error
               nuevosErrores[campo] = ''
             }
           }
@@ -268,7 +251,6 @@ function CrearCuenta() {
 
       validarHorarioPorDia(dia, horarioActualizado.find(h => h.dia === dia))
 
-      // 👉 Validación general dinámica de todos los horarios
       if (form.role !== 'paciente') {
         const { horariosValidos } = calcularHorariosValidos(horarioActualizado)
         if (horariosValidos === 0) {
@@ -317,7 +299,6 @@ function CrearCuenta() {
         return h
       }).filter(Boolean)
 
-      // Validación dinámica
       if (form.role !== 'paciente') {
         const { horariosValidos } = calcularHorariosValidos(nuevoHorario)
         if (horariosValidos === 0) {
@@ -368,7 +349,7 @@ function CrearCuenta() {
     setErrores(prev => ({
       ...prev,
       ...nuevosErrores,
-      horario: prev.horario // preserva errores de horario
+      horario: prev.horario
     }))
 
 

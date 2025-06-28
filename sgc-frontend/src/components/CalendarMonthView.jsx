@@ -32,10 +32,10 @@ function CalendarMonthView({ medico, citas, onSelectDay }) {
 
   const getDiaEstado = (fecha) => {
     const hoy = new Date()
-    hoy.setHours(0, 0, 0, 0) // Normalizamos hora de hoy
+    hoy.setHours(0, 0, 0, 0)
     fecha.setHours(0, 0, 0, 0)
 
-    if (isBefore(fecha, hoy)) return null // Bloqueamos días pasados (sin color y deshabilitados)
+    if (isBefore(fecha, hoy)) return null
 
     const diaNombre = normalizar(
       fecha.toLocaleDateString('es-EC', { weekday: 'long' })

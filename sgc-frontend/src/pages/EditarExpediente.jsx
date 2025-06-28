@@ -23,7 +23,7 @@ function calcularEdad(fechaNacimiento) {
 }
 
 function EditarExpediente() {
-  const { id } = useParams() // cita_id
+  const { id } = useParams()
   const [role, setRole] = useState(null)
   const [cita, setCita] = useState(null)
   const [paciente, setPaciente] = useState(null)
@@ -84,9 +84,7 @@ function EditarExpediente() {
     <div className="flex min-h-screen bg-gradient-to-br from-white to-cyan-100">
       <Sidebar role={role} />
 
-      {/* Contenido principal + historial */}
       <div className="flex flex-1 ml-64">
-        {/* Contenido principal */}
         <div className="flex-1 p-8">
           <h1 className="text-3xl font-bold text-teal-800 mb-4">Expediente del Paciente</h1>
 
@@ -124,7 +122,6 @@ function EditarExpediente() {
           </div>
         </div>
 
-        {/* Historial del expediente en el lado derecho */}
         <div className="w-[400px] p-4 border-l border-gray-300 bg-white overflow-y-scroll h-screen sticky top-0">
           <h2 className="text-2xl font-bold text-teal-800 mb-4">🗂 Historial</h2>
           <div className="space-y-4">

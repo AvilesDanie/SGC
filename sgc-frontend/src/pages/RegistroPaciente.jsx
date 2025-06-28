@@ -104,7 +104,6 @@ function RegistroPaciente() {
       const token = localStorage.getItem('token')
 
 
-      // Verificar duplicados antes de enviar
       const usuariosExistentes = await axios.get('http://localhost:8000/usuarios', {
         headers: { Authorization: `Bearer ${token}` }
       })
@@ -121,7 +120,6 @@ function RegistroPaciente() {
         setErrores(prev => ({ ...prev, telefono: 'Teléfono ya registrado.' }))
         return
       }
-
 
 
       const payload = {

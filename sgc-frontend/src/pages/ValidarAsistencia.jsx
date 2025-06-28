@@ -49,6 +49,23 @@ function ValidarAsistencia() {
       })
   }, [navigate])
 
+  useEffect(() => {
+    const ws = new WebSocket("ws://localhost:8000/ws/estado-citas")
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data)
+      if (data.evento === "actualizacion_citas") {
+        cargarCitas()
+      }
+    }
+
+    ws.onclose = () => console.log("WebSocket cerrado")
+    ws.onerror = (err) => console.error("WebSocket error", err)
+
+    return () => ws.close()
+  }, [])
+
+
   const cargarCitas = async () => {
     try {
       const res = await api.get('/citas/hoy')
@@ -83,22 +100,7 @@ function ValidarAsistencia() {
     }
   }
 
-  useEffect(() => {
-    const ws = new WebSocket("ws://localhost:8000/ws/estado-citas")
-
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data)
-      if (data.evento === "actualizacion_citas") {
-        cargarCitas() // recarga las citas cuando hay cambios
-      }
-    }
-
-    ws.onclose = () => console.log("WebSocket cerrado")
-    ws.onerror = (err) => console.error("WebSocket error", err)
-
-    return () => ws.close()
-  }, [])
-
+  
 
   const filtrar = (cita) => {
     const paciente = pacientes[cita.paciente_id]
@@ -162,10 +164,8 @@ function ValidarAsistencia() {
             <option value="para_signos">Para signos</option>
             <option value="en_espera">En espera</option>
             
-            {/*<option value="en_consulta">En consulta</option>*/}
             
             <option value="terminado">Terminado</option>
-            {/*<option value="perdida">Perdida</option>*/}
           </select>
         </div>
 

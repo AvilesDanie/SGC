@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, create_engine, Session, select
-from models import User, RoleEnum
-from utils import get_password_hash  # Utilidad para hash de contraseña
+from .models.usuario.usuario import User, RoleEnum
+from .auth import get_password_hash
 from datetime import date
 import os
 from dotenv import load_dotenv
@@ -30,7 +30,7 @@ def init_db():
                 fecha_nacimiento=date(1980, 1, 1),
                 direccion="Dirección central",
                 telefono="0999999999",
-                numero_filiacion="ADM001",  # Asignado manualmente, o puedes autogenerar
+                numero_filiacion="ADM001",
                 is_active=True
             )
             session.add(admin)

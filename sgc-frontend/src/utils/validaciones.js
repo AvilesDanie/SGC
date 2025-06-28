@@ -1,3 +1,5 @@
+import axios from 'axios'
+
 export const validarCedulaEcuatoriana = (cedula) => {
   if (!/^\d{10}$/.test(cedula)) return false
   const provincia = parseInt(cedula.substring(0, 2))
@@ -68,7 +70,6 @@ export const validarCampo = (name, value, role, touched = true) => {
 
 
 
-import axios from 'axios'
 
 export const validarDuplicado = async (campo, valor, rol, usuarioId = null) => {
   const token = localStorage.getItem('token')

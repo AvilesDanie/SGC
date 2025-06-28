@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import CalendarMonthView from '../components/CalendarMonthView'
 import CalendarDayView from '../components/CalendarDayView'
-import api from '../api/axiosConfig' // axios configurado
+import api from '../api/axiosConfig'
 
 function GenerarTurno() {
   const [role, setRole] = useState(null)

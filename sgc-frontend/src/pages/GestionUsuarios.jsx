@@ -197,6 +197,7 @@ function GestionUsuarios() {
   }
 
   const usuariosFiltrados = usuarios.filter(u =>
+    u.role !== 'super_admin' &&
     `${u.nombre} ${u.apellido}`.toLowerCase().includes(filtro.nombre.toLowerCase()) &&
     u.role.includes(filtro.rol) &&
     (!filtro.especialidad || (u.especialidad_nombre || '').toLowerCase().includes(filtro.especialidad.toLowerCase()))
@@ -389,7 +390,6 @@ function GestionUsuarios() {
                         <div className="flex items-center gap-2">
                           <label className="capitalize w-24">{dia}</label>
 
-                          {/* Hora inicio */}
                           <div className="flex items-center space-x-1">
                             <input
                               type="time"
@@ -411,7 +411,6 @@ function GestionUsuarios() {
 
                           <span>-</span>
 
-                          {/* Hora fin */}
                           <div className="flex items-center space-x-1">
                             <input
                               type="time"
@@ -432,7 +431,6 @@ function GestionUsuarios() {
                           </div>
                         </div>
 
-                        {/* Mensaje de error por día */}
                         {erroresEdit.horarioPorDia?.[dia] && (
                           <p className="text-red-500 text-sm ml-24">{erroresEdit.horarioPorDia[dia]}</p>
                         )}

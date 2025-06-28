@@ -51,6 +51,23 @@ function SignosVitales() {
             })
     }, [navigate])
 
+    useEffect(() => {
+        const ws = new WebSocket("ws://localhost:8000/ws/estado-citas")
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data)
+            if (data.evento === "actualizacion_citas") {
+                cargarCitas() // recarga las citas cuando hay cambios
+            }
+        }
+
+        ws.onclose = () => console.log("WebSocket cerrado")
+        ws.onerror = (err) => console.error("WebSocket error", err)
+
+        return () => ws.close()
+    }, [])
+
+
     const filtrar = (cita) => {
         const paciente = pacientes[cita.paciente_id]
         const medico = medicos[cita.medico_id]
@@ -108,22 +125,7 @@ function SignosVitales() {
         }
     }
 
-    useEffect(() => {
-        const ws = new WebSocket("ws://localhost:8000/ws/estado-citas")
-
-        ws.onmessage = (event) => {
-            const data = JSON.parse(event.data)
-            if (data.evento === "actualizacion_citas") {
-                cargarCitas() // recarga las citas cuando hay cambios
-            }
-        }
-
-        ws.onclose = () => console.log("WebSocket cerrado")
-        ws.onerror = (err) => console.error("WebSocket error", err)
-
-        return () => ws.close()
-    }, [])
-
+    
 
     const abrirModal = (cita) => {
         setModalCita(cita)
@@ -176,10 +178,8 @@ function SignosVitales() {
         const { name, value } = e.target
         const nuevoSigno = { ...signos, [name]: value }
 
-        // Validar individualmente primero
         const errorActual = validarCampo(name, value)
 
-        // Validar peso y talla con sus errores individuales
         const pesoStr = nuevoSigno.peso
         const tallaStr = nuevoSigno.talla
         const pesoErr = validarCampo('peso', pesoStr)
@@ -190,16 +190,14 @@ function SignosVitales() {
             [name]: errorActual
         }
 
-        // Guardar errores individuales de peso/talla si no son el campo actual
         if (name !== 'peso' && pesoErr) nuevosErrores.peso = pesoErr
         if (name !== 'talla' && tallaErr) nuevosErrores.talla = tallaErr
 
-        // Validación cruzada SOLO si peso y talla son válidos por separado
         if (!pesoErr && !tallaErr) {
             const peso = parseFloat(pesoStr)
             const talla = parseFloat(tallaStr)
             const imc = peso / Math.pow(talla / 100, 2)
-            const imcRounded = Math.round(imc * 10) / 10  // redondea a 1 decimal
+            const imcRounded = Math.round(imc * 10) / 10 
 
             if (imcRounded < 10 || imcRounded > 60) {
                 const imcText = `⚠️ IMC fuera de rango (${imcRounded}).`
@@ -238,7 +236,6 @@ function SignosVitales() {
     const guardarSignos = async () => {
         const nuevosErrores = {}
 
-        // Validaciones individuales
         Object.entries(signos).forEach(([campo, valor]) => {
             const msg = validarCampo(campo, valor)
             if (msg) nuevosErrores[campo] = msg
