@@ -11,6 +11,7 @@ import SignosVitales from './pages/SignosVitales'
 import PrivateRoute from './components/PrivateRoute'
 import Expedientes from './pages/Expedientes'
 import EditarExpediente from './pages/EditarExpediente'
+import HistorialCitasPaciente from './pages/HistorialCitasPaciente'
 function App() {
   return (
     <Routes>
@@ -94,6 +95,14 @@ function App() {
         element={
           <PrivateRoute>
             <EditarExpediente />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/dashboard/HistorialCitasPaciente"
+        element={
+          <PrivateRoute>
+            <HistorialCitasPaciente />
           </PrivateRoute>
         }
       />

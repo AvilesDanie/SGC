@@ -14,8 +14,7 @@ const menusPorRol = {
     { to: '/dashboard/signosvitales', label: 'Registrar Signos Vitales' },
   ],
   paciente: [
-    { to: '/dashboard/historial', label: 'Mi Historial' },
-    { to: '/dashboard/recetas', label: 'Recetas Médicas' },
+    { to: '/dashboard/HistorialCitasPaciente', label: 'Mi Historial' },
   ],
   farmacologo: [
     { to: '/dashboard/stock', label: 'Stock de Medicamentos' },

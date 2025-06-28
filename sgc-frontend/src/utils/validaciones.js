@@ -102,3 +102,31 @@ export const validarCampo = (name, value, role, touched = true) => {
       return '';
   }
 };
+
+export const validarDuplicado = async (campo, valor, rol, usuarioId = null) => {
+  const token = localStorage.getItem('token')
+  if (!token || !['cedula', 'telefono', 'username'].includes(campo) || !valor) return ''
+
+  try {
+    const res = await axios.get('http://localhost:8000/usuarios', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+
+    const duplicado = res.data.find(u =>
+      u[campo] === valor &&
+      (!usuarioId || u.id !== usuarioId)
+    )
+
+    if (duplicado) {
+      const unoEsPaciente = rol === 'paciente' || duplicado.role === 'paciente'
+      const ambosPacientes = rol === 'paciente' && duplicado.role === 'paciente'
+      if (!unoEsPaciente || ambosPacientes) {
+        return `${campo[0].toUpperCase() + campo.slice(1)} ya está registrado para otro usuario.`
+      }
+    }
+  } catch (err) {
+    console.warn('Error validando duplicado:', err)
+  }
+
+  return ''
+};

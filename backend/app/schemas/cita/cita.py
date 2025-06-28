@@ -52,3 +52,23 @@ class CitaWithSignosRead(BaseModel):
     class Config:
         orm_mode = True
 
+
+class MedicoInfo(BaseModel):
+    id: int
+    nombre: str
+    apellido: str
+    especialidad: Optional[str]
+
+    class Config:
+        orm_mode = True
+
+class CitaWithMedicoRead(BaseModel):
+    id: int
+    fecha: date
+    hora_inicio: time
+    hora_fin: time
+    estado: str
+    medico: MedicoInfo
+
+    class Config:
+        orm_mode = True

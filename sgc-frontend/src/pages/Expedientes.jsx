@@ -31,6 +31,8 @@ function Expedientes() {
     }, [navigate])
 
     useEffect(() => {
+        if (!medicoId) return // no abrir nada hasta tener medicoId
+
         const ws = new WebSocket("ws://localhost:8000/ws/estado-citas")
 
         ws.onmessage = (event) => {
@@ -45,6 +47,7 @@ function Expedientes() {
 
         return () => ws.close()
     }, [medicoId])
+
 
 
     const filtrar = (cita) => {

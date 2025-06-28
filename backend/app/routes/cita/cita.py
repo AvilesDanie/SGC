@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, or_, select
+from sqlalchemy.orm import selectinload
 
 from ...models.usuario.usuario import User, RoleEnum
 from ...models.usuario.horario_laboral import HorarioLaboral
 from ...models.cita.cita import Cita, EstadoCitaEnum
 
-from ...schemas.cita.cita import CitaCreate, CitaRead, EstadoCita, EstadoCitaRequest
+from ...schemas.cita.cita import CitaCreate, CitaRead, CitaWithMedicoRead, EstadoCita, EstadoCitaRequest
 
 from ..websocket.websoket import notificar_actualizacion
 
@@ -155,6 +156,41 @@ async def cambiar_estado_cita(
 
     return {"message": "Estado actualizado"}
 
+
+@router.get("/citas/historial", response_model=List[CitaWithMedicoRead])
+def obtener_historial_citas_paciente(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role != RoleEnum.paciente:
+        raise HTTPException(status_code=403, detail="Solo pacientes pueden consultar su historial de citas.")
+
+    citas = session.exec(
+        select(Cita)
+        .options(
+            selectinload(Cita.medico).selectinload(User.especialidad)
+        )
+        .where(Cita.paciente_id == current_user.id)
+        .order_by(Cita.fecha.desc(), Cita.hora_inicio.desc())
+    ).all()
+
+    return [
+        CitaWithMedicoRead(
+            id=cita.id,
+            fecha=cita.fecha,
+            hora_inicio=cita.hora_inicio,
+            hora_fin=cita.hora_fin,
+            estado=cita.estado.value,
+            medico={
+                "id": cita.medico.id,
+                "nombre": cita.medico.nombre,
+                "apellido": cita.medico.apellido,
+                "especialidad": cita.medico.especialidad.nombre if cita.medico.especialidad else None
+            }
+        )
+        for cita in citas
+    ]
+
 @router.get("/citas/{cita_id}", response_model=CitaRead)
 def obtener_cita_por_id(
     cita_id: int,
@@ -169,4 +205,5 @@ def obtener_cita_por_id(
         raise HTTPException(status_code=404, detail="Cita no encontrada.")
 
     return cita
+
 

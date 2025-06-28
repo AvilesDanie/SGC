@@ -6,6 +6,7 @@ from typing import Optional, TYPE_CHECKING
 
 
 if TYPE_CHECKING:
+    from ...models.usuario.usuario import User
     from signos.signos_vitales import SignosVitales
 
 
@@ -28,4 +29,5 @@ class Cita(SQLModel, table=True):
     hora_fin: time
 
     estado: EstadoCitaEnum = Field(default=EstadoCitaEnum.agendado)
+    medico: Optional["User"] = Relationship(sa_relationship_kwargs={"primaryjoin": "Cita.medico_id==User.id"})
     signos_vitales: Optional["SignosVitales"] = Relationship(back_populates="cita")
