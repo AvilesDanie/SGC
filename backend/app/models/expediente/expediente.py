@@ -8,3 +8,4 @@ class Expediente(SQLModel, table=True):
     cita_id: int = Field(foreign_key="cita.id")
     contenido: str
     fecha: date = Field(default_factory=date.today)
+    archivo_path: Optional[str] = None

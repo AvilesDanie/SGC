@@ -11,6 +11,11 @@ from app.routes.usuario.usuario import router as usuario_router
 from app.routes.usuario.especialidad import router as especialidad_router
 from app.routes.websocket.websoket import router as websocket_router
 
+import os
+from fastapi.staticfiles import StaticFiles
+
+os.makedirs("./media/expedientes", exist_ok=True)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -27,6 +32,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.mount("/media", StaticFiles(directory="media"), name="media")
 
 
 app.include_router(cita_router, tags=["Citas"])

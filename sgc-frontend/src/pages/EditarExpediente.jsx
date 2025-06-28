@@ -30,8 +30,11 @@ function EditarExpediente() {
   const [signos, setSignos] = useState(null)
   const [expediente, setExpediente] = useState([])
   const [nota, setNota] = useState('')
+  const [archivo, setArchivo] = useState(null)
+  const [modalArchivoUrl, setModalArchivoUrl] = useState(null)
+  const [errorMensaje, setErrorMensaje] = useState('')
+
   const navigate = useNavigate()
-  const [errorMensaje, setErrorMensaje] = useState('');
 
 
   useEffect(() => {
@@ -67,10 +70,23 @@ function EditarExpediente() {
 
   const guardarNota = async () => {
     try {
-      await api.post('/expedientes', {
-        cita_id: cita.id,
-        contenido: `🩺 Signos vitales:\n${JSON.stringify(signos, null, 2)}\n\n📝 Nota del médico:\n${nota}`
+      const formData = new FormData()
+      formData.append("cita_id", cita.id)
+      formData.append(
+        "contenido",
+        `🩺 Signos vitales:\n${JSON.stringify(signos, null, 2)}\n\n📝 Nota del médico:\n${nota}`
+      )
+
+      if (archivo) {
+        formData.append("archivo", archivo)
+      }
+
+      await api.post('/expedientes', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
       })
+
       await api.put(`/citas/${cita.id}/estado`, { estado: 'terminado' })
 
       navigate('/dashboard/expedientes')
@@ -78,8 +94,6 @@ function EditarExpediente() {
       setErrorMensaje('Ocurrió un error al guardar el expediente. Por favor inténtelo de nuevo.');
       setErrorDetalle(err?.message || 'Error desconocido');
     }
-
-
 
   }
 
@@ -119,12 +133,33 @@ function EditarExpediente() {
               value={nota}
               onChange={e => setNota(e.target.value)}
             />
-            <button
-              onClick={guardarNota}
-              className="mt-4 bg-green-600 text-white px-4 py-2 rounded"
-            >
-              Guardar Nota
-            </button>
+
+            <div className="mt-4 flex items-center space-x-2">
+              <div className="relative">
+                <input
+                  id="archivo"
+                  type="file"
+                  accept="application/pdf"
+                  onChange={e => setArchivo(e.target.files[0])}
+                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                />
+                <div className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded cursor-pointer">
+                  {archivo ? "Cambiar Archivo" : "Seleccionar Archivo"}
+                </div>
+              </div>
+              {archivo && (
+                <span className="text-sm text-gray-700 truncate max-w-[200px]">
+                  {archivo.name}
+                </span>
+              )}
+              <button
+                onClick={guardarNota}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
+              >
+                Guardar Nota
+              </button>
+            </div>
+
             {errorMensaje && (
               <div className="mt-4 text-red-600 font-semibold">
                 {errorMensaje}
@@ -146,8 +181,8 @@ function EditarExpediente() {
                 <p className="text-sm text-gray-500">📅 {new Date(entry.fecha).toLocaleString()}</p>
                 <div className="mt-2 text-sm space-y-2">
                   {(() => {
-                    const signosMatch = entry.contenido.match(/🩺 Signos vitales:\n([\s\S]*?)\n\n/)
-                    const notaMatch = entry.contenido.match(/📝 Nota del médico:\n([\s\S]*)/)
+                    const signosMatch = entry.contenido.match(/🩺 Signos vitales:\s*([\s\S]*?)\s*📝 Nota del médico:/)
+                    const notaMatch = entry.contenido.match(/📝 Nota del médico:\s*([\s\S]*)/)
 
                     const bloques = []
 
@@ -187,13 +222,43 @@ function EditarExpediente() {
 
                     return bloques
                   })()}
-                </div>
 
+                  {entry.archivo_url && (
+                    <button
+                      onClick={() => setModalArchivoUrl(entry.archivo_url)}
+                      className="mt-2 bg-blue-600 text-white px-3 py-1 rounded text-sm"
+                    >
+                      Ver Documento
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         </div>
       </div>
+
+      {modalArchivoUrl && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+          <div className="bg-white rounded shadow-lg w-[80%] h-[80%] flex flex-col">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h2 className="text-lg font-semibold">📄 Documento PDF</h2>
+              <button
+                onClick={() => setModalArchivoUrl(null)}
+                className="text-gray-600 hover:text-gray-900"
+              >
+                ✕
+              </button>
+            </div>
+            <iframe
+              src={modalArchivoUrl}
+              className="flex-1 w-full"
+              title="Documento PDF"
+            ></iframe>
+
+          </div>
+        </div>
+      )}
     </div>
   )
 }
