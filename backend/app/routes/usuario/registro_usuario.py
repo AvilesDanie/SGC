@@ -5,7 +5,8 @@ from ...models.usuario.usuario import User
 
 from ...schemas.usuario.usuario import ExtendedUserCreate
 
-from ...auth import get_password_hash, get_current_user_optional
+from ...auth import get_current_user_optional
+from ...utils.security import get_password_hash
 from ...database import get_session
 from typing import Optional
 from .validaciones import validate_permissions, check_existing_username, check_duplicate_cedula, validate_user_fields, handle_especialidad, generate_numero_filiacion, create_horarios

@@ -13,6 +13,10 @@ function Expedientes() {
         cedula: '',
         nombre: ''
     })
+    const [modalMedico, setModalMedico] = useState({ open: false, citaId: null })
+    const [modalAsistencia, setModalAsistencia] = useState({ open: false, citaId: null })
+    const [modalVerMedico, setModalVerMedico] = useState({ open: false, data: null })
+    const [modalVerAsistencia, setModalVerAsistencia] = useState({ open: false, data: null })
 
     useEffect(() => {
         const token = localStorage.getItem('token')
@@ -31,7 +35,7 @@ function Expedientes() {
     }, [navigate])
 
     useEffect(() => {
-        if (!medicoId) return // no abrir nada hasta tener medicoId
+        if (!medicoId) return
 
         const ws = new WebSocket("ws://localhost:8000/ws/estado-citas")
 
@@ -64,17 +68,30 @@ function Expedientes() {
     const cargarCitas = async (medicoId) => {
         try {
             const res = await api.get('/citas/hoy')
+
             const citasFiltradas = []
 
             for (const cita of res.data) {
                 if (cita.medico_id !== medicoId) continue
                 try {
                     const signosRes = await api.get(`/signos-vitales/cita/${cita.id}`)
-                    citasFiltradas.push({ ...cita, signos_vitales: signosRes.data.signos_vitales })
+
+                    const [certMedico, certAsistencia] = await Promise.all([
+                        api.get(`/certificados/medico/${cita.id}`).then(r => r.data).catch(() => null),
+                        api.get(`/certificados/asistencia/${cita.id}`).then(r => r.data).catch(() => null)
+                    ])
+
+                    citasFiltradas.push({
+                        ...cita,
+                        signos_vitales: signosRes.data.signos_vitales,
+                        certificado_medico: certMedico,
+                        certificado_asistencia: certAsistencia
+                    })
                 } catch {
                     continue
                 }
             }
+
 
             const pacientesData = {}
             await Promise.all(citasFiltradas.map(async c => {
@@ -90,6 +107,232 @@ function Expedientes() {
             console.error(err)
         }
     }
+
+    function ModalCertificadoMedico({ open, onClose, citaId }) {
+        const [diagnostico, setDiagnostico] = useState('')
+        const [reposo, setReposo] = useState(1)
+        const [observaciones, setObservaciones] = useState('')
+
+        const guardar = async () => {
+            try {
+                await api.post('/certificados/medico', {
+                    cita_id: citaId,
+                    diagnostico,
+                    reposo_dias: reposo,
+                    observaciones
+                })
+                await cargarCitas(medicoId)
+                onClose()
+            } catch (err) {
+                if (err.response?.status === 401) {
+                    localStorage.clear()
+                    navigate('/login')
+                } else {
+                    alert('Error al guardar certificado médico')
+                }
+            }
+        }
+
+        if (!open) return null
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white p-6 rounded shadow-lg w-96 space-y-4">
+                    <h2 className="text-xl font-bold text-teal-800">Certificado Médico</h2>
+                    <input
+                        className="input w-full"
+                        placeholder="Diagnóstico"
+                        value={diagnostico}
+                        onChange={e => setDiagnostico(e.target.value)}
+                    />
+                    <input
+                        type="number"
+                        className="input w-full"
+                        placeholder="Días de reposo"
+                        value={reposo}
+                        onChange={e => setReposo(e.target.value)}
+                    />
+                    <textarea
+                        className="input w-full"
+                        placeholder="Observaciones (opcional)"
+                        value={observaciones}
+                        onChange={e => setObservaciones(e.target.value)}
+                    />
+                    <div className="flex justify-end space-x-2">
+                        <button onClick={onClose} className="px-4 py-1 bg-gray-300 rounded">Cancelar</button>
+                        <button onClick={guardar} className="px-4 py-1 bg-teal-600 text-white rounded">Guardar</button>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    function ModalCertificadoAsistencia({ open, onClose, citaId }) {
+        const [motivo, setMotivo] = useState('')
+        const [horaEntrada, setHoraEntrada] = useState('')
+        const [horaSalida, setHoraSalida] = useState('')
+        const [errorHoras, setErrorHoras] = useState('')
+
+        useEffect(() => {
+            if (citaId) {
+                api.get(`/citas/${citaId}`)
+                    .then(res => {
+                        const { hora_inicio, hora_fin } = res.data
+                        setHoraEntrada(hora_inicio?.slice(0, 5) || '')
+                        setHoraSalida(hora_fin?.slice(0, 5) || '')
+                    })
+                    .catch(() => {
+                        setHoraEntrada('')
+                        setHoraSalida('')
+                    })
+            }
+        }, [citaId])
+
+        const guardar = async () => {
+
+            // Validación: formato HH:MM -> minutos totales
+            const entradaMin = convertirHoraAMinutos(horaEntrada)
+            const salidaMin = convertirHoraAMinutos(horaSalida)
+
+            if (horaEntrada && horaSalida) {
+                if (entradaMin > salidaMin) {
+                    setErrorHoras('La hora de entrada no puede ser posterior a la de salida.')
+                    return
+                }
+
+                if (salidaMin - entradaMin > 60) {
+                    setErrorHoras('La diferencia entre entrada y salida no puede ser mayor a una hora.')
+                    return
+                }
+            }
+
+            try {
+                await api.post('/certificados/asistencia', {
+                    cita_id: citaId,
+                    motivo,
+                    hora_entrada: horaEntrada,
+                    hora_salida: horaSalida
+                })
+                await cargarCitas(medicoId)
+                onClose()
+            } catch (err) {
+                if (err.response?.status === 401) {
+                    localStorage.clear()
+                    navigate('/login')
+                } else {
+                    alert('Error al guardar certificado de asistencia')
+                }
+            }
+        }
+
+        const convertirHoraAMinutos = (hhmm) => {
+            const [h, m] = hhmm.split(':').map(Number)
+            return h * 60 + m
+        }
+
+        if (!open) return null
+
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white p-6 rounded shadow-lg w-96 space-y-4">
+                    <h2 className="text-xl font-bold text-teal-800">Certificado de Asistencia</h2>
+
+                    <textarea
+                        className="input w-full"
+                        placeholder="Motivo (opcional)"
+                        value={motivo}
+                        onChange={e => setMotivo(e.target.value)}
+                    />
+
+                    <div className="flex space-x-4">
+                        <div className="flex-1">
+                            <label className="block text-sm font-medium text-gray-700">Hora entrada</label>
+                            <input
+                                type="time"
+                                className="input w-full"
+                                value={horaEntrada}
+                                onChange={e => {
+                                    setHoraEntrada(e.target.value)
+                                    setErrorHoras('')
+                                }}
+                            />
+                        </div>
+                        <div className="flex-1">
+                            <label className="block text-sm font-medium text-gray-700">Hora salida</label>
+                            <input
+                                type="time"
+                                className="input w-full"
+                                value={horaSalida}
+                                onChange={e => {
+                                    setHoraSalida(e.target.value)
+                                    setErrorHoras('')
+                                }}
+                            />
+                        </div>
+                    </div>
+
+                    {errorHoras && (
+                        <div className="text-red-600 text-sm text-center">{errorHoras}</div>
+                    )}
+
+                    <div className="flex justify-end space-x-2 pt-2">
+                        <button onClick={onClose} className="px-4 py-1 bg-gray-300 rounded">Cancelar</button>
+                        <button onClick={guardar} className="px-4 py-1 bg-teal-600 text-white rounded">Guardar</button>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+
+    function ModalVerCertificado({ open, onClose, certificado, tipo }) {
+        if (!open || !certificado) return null
+
+        const formato = (str) => new Date(str).toLocaleDateString()
+
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white p-6 rounded shadow-lg w-[500px] max-w-full space-y-4">
+                    <h2 className="text-2xl font-bold text-teal-800 text-center">
+                        {tipo === "medico" ? "Certificado Médico" : "Certificado de Asistencia"}
+                    </h2>
+
+                    <div className="text-gray-800 space-y-2 text-sm max-h-[60vh] overflow-y-auto whitespace-pre-wrap break-words">
+                        <p><strong>Paciente:</strong> {certificado.paciente_nombre}</p>
+                        <p><strong>Médico:</strong> {certificado.medico_nombre}</p>
+                        <p><strong>Fecha de cita:</strong> {formato(certificado.fecha_cita)}</p>
+
+                        {tipo === "medico" ? (
+                            <>
+                                <p><strong>Diagnóstico:</strong> {certificado.diagnostico}</p>
+                                <p><strong>Días de reposo:</strong> {certificado.reposo_dias}</p>
+                                {certificado.observaciones && (
+                                    <p><strong>Observaciones:</strong> {certificado.observaciones}</p>
+                                )}
+                                {/*<p><strong>Emitido el:</strong> {formato(certificado.fecha_emision)}</p>*/}
+                            </>
+                        ) : (
+                            <>
+                                {/*<p><strong>Fecha:</strong> {formato(certificado.fecha)}</p>*/}
+                                <p><strong>Hora de entrada:</strong> {certificado.hora_entrada}</p>
+                                <p><strong>Hora de salida:</strong> {certificado.hora_salida}</p>
+                                {certificado.motivo && (
+                                    <p><strong>Motivo:</strong> {certificado.motivo}</p>
+                                )}
+                            </>
+                        )}
+                    </div>
+
+                    <div className="flex justify-end mt-4">
+                        <button onClick={onClose} className="px-4 py-1 bg-gray-300 rounded">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+
+
+
 
     if (role !== 'medico') return null
 
@@ -156,10 +399,42 @@ function Expedientes() {
                                                 Abrir expediente
                                             </button>
                                         ) : (
-                                            <p className="mt-2 text-sm text-red-700 font-semibold">
-                                                Consulta finalizada
-                                            </p>
+                                            <div className="mt-2 space-x-2">
+                                                {cita.certificado_medico ? (
+                                                    <button
+                                                        className="bg-green-700 text-white px-3 py-1 rounded text-sm"
+                                                        onClick={() => setModalVerMedico({ open: true, data: cita.certificado_medico })}
+                                                    >
+                                                        Ver Cert. Médico
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        className="bg-green-600 text-white px-3 py-1 rounded text-sm"
+                                                        onClick={() => setModalMedico({ open: true, citaId: cita.id })}
+                                                    >
+                                                        Cert. Médico
+                                                    </button>
+                                                )}
+
+                                                {cita.certificado_asistencia ? (
+                                                    <button
+                                                        className="bg-purple-700 text-white px-3 py-1 rounded text-sm"
+                                                        onClick={() => setModalVerAsistencia({ open: true, data: cita.certificado_asistencia })}
+                                                    >
+                                                        Ver Cert. Asistencia
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        className="bg-purple-600 text-white px-3 py-1 rounded text-sm"
+                                                        onClick={() => setModalAsistencia({ open: true, citaId: cita.id })}
+                                                    >
+                                                        Cert. Asistencia
+                                                    </button>
+                                                )}
+
+                                            </div>
                                         )}
+
                                     </div>
                                 )
                             })
@@ -167,7 +442,34 @@ function Expedientes() {
                 </div>
 
             </div>
+
+            <ModalCertificadoMedico
+                open={modalMedico.open}
+                citaId={modalMedico.citaId}
+                onClose={() => setModalMedico({ open: false, citaId: null })}
+            />
+            <ModalCertificadoAsistencia
+                open={modalAsistencia.open}
+                citaId={modalAsistencia.citaId}
+                onClose={() => setModalAsistencia({ open: false, citaId: null })}
+            />
+            <ModalVerCertificado
+                open={modalVerMedico.open}
+                certificado={modalVerMedico.data}
+                tipo="medico"
+                onClose={() => setModalVerMedico({ open: false, data: null })}
+            />
+
+            <ModalVerCertificado
+                open={modalVerAsistencia.open}
+                certificado={modalVerAsistencia.data}
+                tipo="asistencia"
+                onClose={() => setModalVerAsistencia({ open: false, data: null })}
+            />
+
+
         </div>
+
     )
 }
 

@@ -32,7 +32,7 @@ def obtener_citas_activas_por_medico(
         select(Cita)
         .where(Cita.medico_id == medico_id)
         .where(Cita.fecha >= hoy)
-        .where(Cita.estado.notin_([EstadoCita.terminado, EstadoCita.perdida]))
+        .where(Cita.estado.notin_([EstadoCita.perdida]))
         .order_by(Cita.fecha, Cita.hora_inicio)
     ).all()
 
@@ -168,7 +168,9 @@ def obtener_historial_citas_paciente(
     citas = session.exec(
         select(Cita)
         .options(
-            selectinload(Cita.medico).selectinload(User.especialidad)
+            selectinload(Cita.medico).selectinload(User.especialidad),
+            selectinload(Cita.certificado_medico),
+            selectinload(Cita.certificado_asistencia)
         )
         .where(Cita.paciente_id == current_user.id)
         .order_by(Cita.fecha.desc(), Cita.hora_inicio.desc())
@@ -186,7 +188,9 @@ def obtener_historial_citas_paciente(
                 "nombre": cita.medico.nombre,
                 "apellido": cita.medico.apellido,
                 "especialidad": cita.medico.especialidad.nombre if cita.medico.especialidad else None
-            }
+            },
+            certificado_medico=cita.certificado_medico is not None,
+            certificado_asistencia=cita.certificado_asistencia is not None
         )
         for cita in citas
     ]

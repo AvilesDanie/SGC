@@ -5,7 +5,8 @@ from ...models.usuario.usuario import User
 
 from ...schemas.usuario.usuario import PasswordChangeRequest, UsernameChangeRequest
 
-from ...auth import get_password_hash, verify_password
+from ...auth import verify_password
+from ...utils.security import get_password_hash
 from ...database import get_session
 from ...dependencies import get_current_user
 

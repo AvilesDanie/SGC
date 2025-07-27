@@ -82,6 +82,68 @@ function HistorialCitasPaciente() {
     return matchEstado && matchFecha && matchMedico && matchEspecialidad
   }
 
+  const [modalCert, setModalCert] = useState({ open: false, tipo: null, data: null })
+
+  const abrirCertificado = async (tipo, citaId) => {
+    try {
+      const endpoint = tipo === 'medico'
+        ? `/certificados/medico/${citaId}`
+        : `/certificados/asistencia/${citaId}`
+      const res = await api.get(endpoint)
+      setModalCert({ open: true, tipo, data: res.data })
+    } catch (err) {
+      alert('Error al cargar el certificado')
+    }
+  }
+
+  function ModalVerCertificado({ open, tipo, data, onClose }) {
+    if (!open || !data) return null
+
+    const formato = str => new Date(str).toLocaleDateString()
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white p-6 rounded shadow-lg w-[500px] max-w-full space-y-4">
+          <h2 className="text-2xl font-bold text-teal-800 text-center">
+            {tipo === "medico" ? "Certificado Médico" : "Certificado de Asistencia"}
+          </h2>
+
+            <div className="text-gray-800 space-y-2 text-sm max-h-[60vh] overflow-y-auto whitespace-pre-wrap break-words">
+
+            <p><strong>Paciente:</strong> {data.paciente_nombre}</p>
+            <p><strong>Médico:</strong> {data.medico_nombre}</p>
+            <p><strong>Fecha de cita:</strong> {formato(data.fecha_cita)}</p>
+
+            {tipo === "medico" ? (
+              <>
+                <p><strong>Diagnóstico:</strong> {data.diagnostico}</p>
+                <p><strong>Días de reposo:</strong> {data.reposo_dias}</p>
+                {data.observaciones && (
+                  <p><strong>Observaciones:</strong> {data.observaciones}</p>
+                )}
+                <p><strong>Emitido el:</strong> {formato(data.fecha_emision)}</p>
+              </>
+            ) : (
+              <>
+                <p><strong>Fecha:</strong> {formato(data.fecha)}</p>
+                <p><strong>Hora de entrada:</strong> {data.hora_entrada}</p>
+                <p><strong>Hora de salida:</strong> {data.hora_salida}</p>
+                {data.motivo && (
+                  <p><strong>Motivo:</strong> {data.motivo}</p>
+                )}
+              </>
+            )}
+          </div>
+
+          <div className="flex justify-end mt-4">
+            <button onClick={onClose} className="px-4 py-1 bg-gray-300 rounded">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+
   if (loading) return <div className="p-6">Cargando...</div>
 
   return (
@@ -145,11 +207,39 @@ function HistorialCitasPaciente() {
                   <p><strong>Médico:</strong> {cita.medico.nombre} {cita.medico.apellido}</p>
                   <p><strong>Especialidad:</strong> {cita.medico.especialidad || '—'}</p>
                   <p><strong>Estado:</strong> {cita.estado.replace('_', ' ')}</p>
+                  {cita.certificado_medico || cita.certificado_asistencia ? (
+                    <div className="mt-2 space-x-2">
+                      {cita.certificado_medico && (
+                        <button
+                          onClick={() => abrirCertificado("medico", cita.id)}
+                          className="bg-green-600 text-white px-3 py-1 rounded text-sm"
+                        >
+                          Ver Cert. Médico
+                        </button>
+                      )}
+                      {cita.certificado_asistencia && (
+                        <button
+                          onClick={() => abrirCertificado("asistencia", cita.id)}
+                          className="bg-purple-600 text-white px-3 py-1 rounded text-sm"
+                        >
+                          Ver Cert. Asistencia
+                        </button>
+                      )}
+                    </div>
+                  ) : null}
+
                 </div>
               ))
           )}
         </div>
       </div>
+      <ModalVerCertificado
+        open={modalCert.open}
+        tipo={modalCert.tipo}
+        data={modalCert.data}
+        onClose={() => setModalCert({ open: false, tipo: null, data: null })}
+      />
+
     </div>
   )
 }

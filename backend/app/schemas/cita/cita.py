@@ -69,6 +69,8 @@ class CitaWithMedicoRead(BaseModel):
     hora_fin: time
     estado: str
     medico: MedicoInfo
+    certificado_medico: Optional[bool] = False
+    certificado_asistencia: Optional[bool] = False
 
     class Config:
         orm_mode = True

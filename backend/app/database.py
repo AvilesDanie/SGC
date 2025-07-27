@@ -1,9 +1,10 @@
 from sqlmodel import SQLModel, create_engine, Session, select
 from .models.usuario.usuario import User, RoleEnum
-from .auth import get_password_hash
 from datetime import date
 import os
 from dotenv import load_dotenv
+from .utils.security import get_password_hash
+
 
 load_dotenv()
 

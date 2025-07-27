@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from sqlmodel import Session, delete, select
+from sqlalchemy import func
 
 from ...models.usuario.usuario import User, RoleEnum
 from ...models.usuario.horario_laboral import HorarioLaboral
@@ -7,7 +8,7 @@ from ...models.usuario.especialidad import Especialidad
 
 from ...schemas.usuario.usuario import UserUpdate
 
-from ...auth import get_password_hash
+from ...utils.security import get_password_hash
 import re
 
 router = APIRouter()
@@ -66,8 +67,11 @@ def handle_especialidad(session, user):
 def generate_numero_filiacion(session, user):
     if user.role != RoleEnum.paciente:
         return None
-    count = session.exec(select(User).where(User.role == RoleEnum.paciente)).count()
+    count = session.exec(
+        select(func.count()).select_from(User).where(User.role == RoleEnum.paciente)
+    ).one()
     return f"PAC-{count + 1:05d}"
+
 
 def create_horarios(session, nuevo_usuario, user):
     if user.role == RoleEnum.paciente or not user.horario:
