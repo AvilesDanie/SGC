@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import api from '../api/axiosConfig'
+import jsPDF from 'jspdf'
+import html2canvas from 'html2canvas'
 
 const estadoToColor = {
   agendado: 'bg-green-200 border-green-600',
@@ -96,19 +98,60 @@ function HistorialCitasPaciente() {
     }
   }
 
+
+
   function ModalVerCertificado({ open, tipo, data, onClose }) {
     if (!open || !data) return null
 
     const formato = str => new Date(str).toLocaleDateString()
 
+    const descargarPDF = async () => {
+      const input = document.getElementById('pdf-content')
+      const canvas = await html2canvas(input)
+      const imgData = canvas.toDataURL('image/png')
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const imgProps = pdf.getImageProperties(imgData)
+      const pdfWidth = pdf.internal.pageSize.getWidth()
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
+      pdf.save(`${tipo === 'medico' ? 'certificado_medico' : 'certificado_asistencia'}.pdf`)
+    }
+
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white p-6 rounded shadow-lg w-[500px] max-w-full space-y-4">
+        <div className="bg-white p-6 rounded shadow-lg w-[500px] max-w-full space-y-4 relative">
           <h2 className="text-2xl font-bold text-teal-800 text-center">
             {tipo === "medico" ? "Certificado Médico" : "Certificado de Asistencia"}
           </h2>
 
-            <div className="text-gray-800 space-y-2 text-sm max-h-[60vh] overflow-y-auto whitespace-pre-wrap break-words">
+          <div
+            id="pdf-content"
+            style={{
+              maxWidth: '500px',
+              padding: '30px',
+              backgroundColor: '#ffffff',
+              color: '#000000',
+              fontFamily: 'Georgia, serif',
+              fontSize: '14px',
+              lineHeight: '1.6',
+              border: '1px solid #ccc',
+              borderRadius: '8px',
+              whiteSpace: 'pre-wrap',
+              wordWrap: 'break-word',
+              overflowWrap: 'break-word',
+              overflow: 'hidden',
+            }}
+          >
+
+            <h3 style={{
+              textAlign: 'center',
+              fontSize: '18px',
+              textDecoration: 'underline',
+              fontWeight: 'bold',
+              marginBottom: '20px'
+            }}>
+              {tipo === "medico" ? "CERTIFICADO MÉDICO" : "CERTIFICADO DE ASISTENCIA"}
+            </h3>
 
             <p><strong>Paciente:</strong> {data.paciente_nombre}</p>
             <p><strong>Médico:</strong> {data.medico_nombre}</p>
@@ -118,9 +161,7 @@ function HistorialCitasPaciente() {
               <>
                 <p><strong>Diagnóstico:</strong> {data.diagnostico}</p>
                 <p><strong>Días de reposo:</strong> {data.reposo_dias}</p>
-                {data.observaciones && (
-                  <p><strong>Observaciones:</strong> {data.observaciones}</p>
-                )}
+                {data.observaciones && <p><strong>Observaciones:</strong> {data.observaciones}</p>}
                 <p><strong>Emitido el:</strong> {formato(data.fecha_emision)}</p>
               </>
             ) : (
@@ -128,20 +169,22 @@ function HistorialCitasPaciente() {
                 <p><strong>Fecha:</strong> {formato(data.fecha)}</p>
                 <p><strong>Hora de entrada:</strong> {data.hora_entrada}</p>
                 <p><strong>Hora de salida:</strong> {data.hora_salida}</p>
-                {data.motivo && (
-                  <p><strong>Motivo:</strong> {data.motivo}</p>
-                )}
+                {data.motivo && <p><strong>Motivo:</strong> {data.motivo}</p>}
               </>
             )}
           </div>
 
-          <div className="flex justify-end mt-4">
+          <div className="flex justify-end mt-4 space-x-2">
+            <button onClick={descargarPDF} className="px-4 py-1 bg-teal-600 text-white rounded">
+              Descargar PDF
+            </button>
             <button onClick={onClose} className="px-4 py-1 bg-gray-300 rounded">Cerrar</button>
           </div>
         </div>
       </div>
     )
   }
+
 
 
   if (loading) return <div className="p-6">Cargando...</div>
