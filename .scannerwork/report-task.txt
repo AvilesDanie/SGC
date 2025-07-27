@@ -1,6 +1,6 @@
-projectKey=SGC
+projectKey=SGC2
 serverUrl=http://localhost:9000
 serverVersion=25.5.0.107428
-dashboardUrl=http://localhost:9000/dashboard?id=SGC
-ceTaskId=5d76cf20-f07c-4ad7-acee-f14d5eb9e91c
-ceTaskUrl=http://localhost:9000/api/ce/task?id=5d76cf20-f07c-4ad7-acee-f14d5eb9e91c
+dashboardUrl=http://localhost:9000/dashboard?id=SGC2
+ceTaskId=fe0032f9-d7f1-40d7-967f-ad976e869d05
+ceTaskUrl=http://localhost:9000/api/ce/task?id=fe0032f9-d7f1-40d7-967f-ad976e869d05

@@ -23,8 +23,6 @@ def obtener_especialidades(session: Session = Depends(get_session)):
     )
     return session.exec(stmt).all()
 
-
-
 @router.get("/usuarios/medicos/especialidad/{nombre_especialidad}", response_model=list[UserRead])
 def obtener_medicos_por_especialidad(nombre_especialidad: str, session: Session = Depends(get_session)):
     especialidad = session.exec(
