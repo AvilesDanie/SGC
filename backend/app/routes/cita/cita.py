@@ -14,6 +14,7 @@ from ...database import get_session
 from datetime import date, time
 from ...dependencies import get_current_user
 from typing import List
+from app.models.medicamento.receta import Receta
 
 router = APIRouter()
 
@@ -92,6 +93,8 @@ async  def crear_cita(cita_data: CitaCreate, session: Session = Depends(get_sess
     await notificar_actualizacion()
 
     return {"message": "Cita creada exitosamente", "cita_id": nueva_cita.id}
+
+
 
 @router.get("/citas/hoy", response_model=List[Cita])
 def obtener_citas_hoy(
@@ -175,25 +178,33 @@ def obtener_historial_citas_paciente(
         .where(Cita.paciente_id == current_user.id)
         .order_by(Cita.fecha.desc(), Cita.hora_inicio.desc())
     ).all()
+    resultado = []
+    for cita in citas:
+        receta_existente = session.exec(
+            select(Receta).where(Receta.cita_id == cita.id)
+        ).first()
 
-    return [
-        CitaWithMedicoRead(
-            id=cita.id,
-            fecha=cita.fecha,
-            hora_inicio=cita.hora_inicio,
-            hora_fin=cita.hora_fin,
-            estado=cita.estado.value,
-            medico={
-                "id": cita.medico.id,
-                "nombre": cita.medico.nombre,
-                "apellido": cita.medico.apellido,
-                "especialidad": cita.medico.especialidad.nombre if cita.medico.especialidad else None
-            },
-            certificado_medico=cita.certificado_medico is not None,
-            certificado_asistencia=cita.certificado_asistencia is not None
+        resultado.append(
+            CitaWithMedicoRead(
+                id=cita.id,
+                fecha=cita.fecha,
+                hora_inicio=cita.hora_inicio,
+                hora_fin=cita.hora_fin,
+                estado=cita.estado.value,
+                medico={
+                    "id": cita.medico.id,
+                    "nombre": cita.medico.nombre,
+                    "apellido": cita.medico.apellido,
+                    "especialidad": cita.medico.especialidad.nombre if cita.medico.especialidad else None
+                },
+                certificado_medico=cita.certificado_medico is not None,
+                certificado_asistencia=cita.certificado_asistencia is not None,
+                tiene_receta=receta_existente is not None  # 👈 aquí
+            )
         )
-        for cita in citas
-    ]
+
+    return resultado
+
 
 @router.get("/citas/{cita_id}", response_model=CitaRead)
 def obtener_cita_por_id(

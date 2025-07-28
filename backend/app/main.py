@@ -18,6 +18,8 @@ from app.routes.cita.certificado import router as certificado_router
 from app.routes.expediente.expediente import router as expediente_router
 from app.routes.signos.signos_vitales import router as signos_router
 from app.routes.websocket.websoket import router as websocket_router
+from app.routes.medicamento.medicamento import router as medicamento_router
+from app.routes.medicamento.receta import router as receta_router
 
 import os
 from fastapi.staticfiles import StaticFiles
@@ -54,4 +56,6 @@ app.include_router(cita_router, tags=["Citas"])
 app.include_router(certificado_router, tags=["Certificados"])
 app.include_router(expediente_router, tags=["Expedientes"])
 app.include_router(signos_router, tags=["Signos Vitales"])
+app.include_router(medicamento_router, tags=["Medicamentos"])
+app.include_router(receta_router, tags=["Recetas"])
 app.include_router(websocket_router, tags=["WebSocket"])

@@ -12,6 +12,8 @@ import PrivateRoute from './components/PrivateRoute'
 import Expedientes from './pages/Expedientes'
 import EditarExpediente from './pages/EditarExpediente'
 import HistorialCitasPaciente from './pages/HistorialCitasPaciente'
+import MedicamentosPage from './pages/MedicamentosPage'
+import RecetasFarmaceuticoPage from './pages/RecetasFarmaceuticoPage'
 function App() {
   return (
     <Routes>
@@ -103,6 +105,22 @@ function App() {
         element={
           <PrivateRoute>
             <HistorialCitasPaciente />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/dashboard/medicamentos"
+        element={
+          <PrivateRoute>
+            <MedicamentosPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/dashboard/recetas"
+        element={
+          <PrivateRoute>
+            <RecetasFarmaceuticoPage />
           </PrivateRoute>
         }
       />

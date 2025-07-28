@@ -26,6 +26,21 @@ function HistorialCitasPaciente() {
   })
 
   const navigate = useNavigate()
+  const [modalReceta, setModalReceta] = useState({ open: false, recetaId: null })
+
+  const abrirReceta = async (citaId) => {
+    try {
+      const receta = await api.get(`/recetas/cita/${citaId}`).then(r => r.data).catch(() => null)
+      if (receta) {
+        setModalReceta({ open: true, recetaId: receta.id })
+      } else {
+        alert("No hay receta registrada para esta cita.")
+      }
+    } catch (err) {
+      alert('Error al cargar receta')
+    }
+  }
+
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -186,6 +201,94 @@ function HistorialCitasPaciente() {
   }
 
 
+  function ModalVerReceta({ open, recetaId, onClose }) {
+    const [receta, setReceta] = useState(null)
+
+    const cargarReceta = async () => {
+      if (!recetaId) return
+      try {
+        const res = await api.get(`/recetas/${recetaId}`)
+        setReceta(res.data)
+      } catch (err) {
+        console.error('Error cargando receta:', err)
+      }
+    }
+
+    useEffect(() => {
+      if (open) cargarReceta()
+    }, [open, recetaId])
+
+    useEffect(() => {
+      if (!recetaId) return
+      const ws = new WebSocket('ws://localhost:8000/ws/medicamentos')
+      ws.onmessage = async (event) => {
+        const { evento } = JSON.parse(event.data)
+        if (["crear", "actualizar", "eliminar"].includes(evento)) {
+          cargarReceta()
+        }
+      }
+      return () => ws.close()
+    }, [recetaId])
+
+    if (!open || !receta) return null
+
+    const formatoFecha = (str) => new Date(str).toLocaleDateString()
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white p-6 rounded shadow-lg w-[700px] max-w-full space-y-4">
+          <h2 className="text-2xl font-bold text-teal-800 text-center">Receta Médica</h2>
+
+          <div className="text-gray-800 text-sm space-y-2 max-h-[60vh] overflow-y-auto whitespace-pre-wrap break-words">
+            <p><strong>Paciente:</strong> {receta.paciente_nombre}</p>
+            <p><strong>Médico:</strong> {receta.medico_nombre}</p>
+            <p><strong>Fecha de emisión:</strong> {formatoFecha(receta.fecha_emision)}</p>
+            {receta.observaciones && (
+              <p><strong>Observaciones:</strong> {receta.observaciones}</p>
+            )}
+            <hr className="my-2" />
+            <h3 className="text-lg font-semibold text-teal-700 mb-1">Medicamentos:</h3>
+            {receta.medicamentos.length === 0 ? (
+              <p>No se registraron medicamentos.</p>
+            ) : (
+              receta.medicamentos.map((m, i) => {
+                let estadoTexto = 'Disponible'
+                let color = 'text-green-700'
+
+                if (m.stock === 0 || m.disponible === false) {
+                  estadoTexto = 'Agotado'
+                  color = 'text-red-600'
+                } else if (m.stock <= 10) {
+                  estadoTexto = 'Casi agotado'
+                  color = 'text-yellow-600'
+                }
+
+                return (
+                  <div key={i} className="border-b pb-2 mb-2">
+                    <div className="flex justify-between items-center">
+                      <p><strong>Medicamento:</strong> {m.medicamento_nombre}</p>
+                      <span className={`text-sm font-semibold ${color}`}>● {estadoTexto}</span>
+                    </div>
+                    <p><strong>Dosis:</strong> {m.dosis}</p>
+                    <p><strong>Frecuencia:</strong> {m.frecuencia}</p>
+                    <p><strong>Duración:</strong> {m.duracion}</p>
+                    {m.indicaciones && <p><strong>Indicaciones:</strong> {m.indicaciones}</p>}
+                  </div>
+                )
+              })
+            )}
+          </div>
+
+          <div className="flex justify-end mt-4">
+            <button onClick={onClose} className="px-4 py-1 bg-gray-300 rounded">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+
+
 
   if (loading) return <div className="p-6">Cargando...</div>
 
@@ -250,7 +353,7 @@ function HistorialCitasPaciente() {
                   <p><strong>Médico:</strong> {cita.medico.nombre} {cita.medico.apellido}</p>
                   <p><strong>Especialidad:</strong> {cita.medico.especialidad || '—'}</p>
                   <p><strong>Estado:</strong> {cita.estado.replace('_', ' ')}</p>
-                  {cita.certificado_medico || cita.certificado_asistencia ? (
+                  {cita.estado === 'terminado' && (
                     <div className="mt-2 space-x-2">
                       {cita.certificado_medico && (
                         <button
@@ -268,8 +371,18 @@ function HistorialCitasPaciente() {
                           Ver Cert. Asistencia
                         </button>
                       )}
+                      {cita.tiene_receta && (
+                        <button
+                          onClick={() => abrirReceta(cita.id)}
+                          className="bg-cyan-600 text-white px-3 py-1 rounded text-sm"
+                        >
+                          Ver Receta
+                        </button>
+                      )}
+
+
                     </div>
-                  ) : null}
+                  )}
 
                 </div>
               ))
@@ -282,6 +395,13 @@ function HistorialCitasPaciente() {
         data={modalCert.data}
         onClose={() => setModalCert({ open: false, tipo: null, data: null })}
       />
+
+      <ModalVerReceta
+        open={modalReceta.open}
+        recetaId={modalReceta.recetaId}
+        onClose={() => setModalReceta({ open: false, recetaId: null })}
+      />
+
 
     </div>
   )

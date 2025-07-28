@@ -17,6 +17,8 @@ function Expedientes() {
     const [modalAsistencia, setModalAsistencia] = useState({ open: false, citaId: null })
     const [modalVerMedico, setModalVerMedico] = useState({ open: false, data: null })
     const [modalVerAsistencia, setModalVerAsistencia] = useState({ open: false, data: null })
+    const [modalReceta, setModalReceta] = useState({ open: false, citaId: null })
+    const [modalVerReceta, setModalVerReceta] = useState({ open: false, receta: null })
 
     useEffect(() => {
         const token = localStorage.getItem('token')
@@ -52,6 +54,18 @@ function Expedientes() {
         return () => ws.close()
     }, [medicoId])
 
+    useEffect(() => {
+        const ws = new WebSocket("ws://localhost:8000/ws/medicamentos")
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data)
+            if (["crear", "actualizar", "eliminar"].includes(data.evento)) {
+                if (medicoId) cargarCitas(medicoId)
+            }
+        }
+
+        return () => ws.close()
+    }, [medicoId])
 
 
     const filtrar = (cita) => {
@@ -81,12 +95,16 @@ function Expedientes() {
                         api.get(`/certificados/asistencia/${cita.id}`).then(r => r.data).catch(() => null)
                     ])
 
+                    const receta = await api.get(`/recetas/cita/${cita.id}`).then(r => r.data).catch(() => null)
+
                     citasFiltradas.push({
                         ...cita,
                         signos_vitales: signosRes.data.signos_vitales,
                         certificado_medico: certMedico,
-                        certificado_asistencia: certAsistencia
+                        certificado_asistencia: certAsistencia,
+                        receta: receta
                     })
+
                 } catch {
                     continue
                 }
@@ -333,6 +351,225 @@ function Expedientes() {
 
 
 
+    function ModalReceta({ open, onClose, citaId }) {
+        const [medicamentos, setMedicamentos] = useState([
+            { medicamento_id: '', dosis: '', frecuencia: '', duracion: '', indicaciones: '' }
+        ])
+        const [opcionesMedicamentos, setOpcionesMedicamentos] = useState([])
+
+        useEffect(() => {
+            if (open) {
+                api.get('/medicamentos')  // Asegúrate de que esta ruta devuelva todos los medicamentos
+                    .then(res => setOpcionesMedicamentos(res.data))
+                    .catch(() => setOpcionesMedicamentos([]))
+            }
+        }, [open])
+
+        const agregarFila = () => {
+            setMedicamentos([...medicamentos, { medicamento_id: '', dosis: '', frecuencia: '', duracion: '', indicaciones: '' }])
+        }
+
+        const eliminarFila = (index) => {
+            const copia = [...medicamentos]
+            copia.splice(index, 1)
+            setMedicamentos(copia)
+        }
+
+        const handleChange = (index, field, value) => {
+            const nuevos = [...medicamentos]
+            nuevos[index][field] = value
+            setMedicamentos(nuevos)
+        }
+
+        const guardar = async () => {
+            try {
+                await api.post('/recetas', {
+                    cita_id: citaId,
+                    observaciones: '',
+                    medicamentos
+                })
+                onClose()
+            } catch (err) {
+                console.error(err)
+                alert('Error al crear receta')
+            }
+        }
+
+        if (!open) return null
+
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white p-6 rounded shadow-lg w-[700px] max-w-full space-y-4">
+                    <h2 className="text-xl font-bold text-teal-800">Generar Receta</h2>
+
+                    {medicamentos.map((m, i) => (
+                        <div key={i} className="border rounded p-3 space-y-2 bg-gray-50 relative">
+                            <button
+                                onClick={() => eliminarFila(i)}
+                                className="absolute top-2 right-2 text-red-500 text-sm"
+                                title="Eliminar"
+                            >
+                                ✕
+                            </button>
+
+                            <div className="grid grid-cols-2 gap-2">
+                                <select
+                                    className="input"
+                                    value={m.medicamento_id}
+                                    onChange={e => handleChange(i, 'medicamento_id', e.target.value)}
+                                >
+                                    <option value="">Seleccionar medicamento</option>
+                                    {opcionesMedicamentos.map(op => (
+                                        <option key={op.id} value={op.id}>
+                                            {op.nombre} {op.concentracion ? `(${op.concentracion})` : ''}
+                                            {` - ${op.forma_farmaceutica}, ${op.unidad_presentacion}`}
+                                            {` - Stock: ${op.stock}`}
+                                        </option>
+
+
+
+                                    ))}
+                                </select>
+
+                                <input
+                                    className="input"
+                                    placeholder="Dosis"
+                                    value={m.dosis}
+                                    onChange={e => handleChange(i, 'dosis', e.target.value)}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                                <input
+                                    className="input"
+                                    placeholder="Frecuencia"
+                                    value={m.frecuencia}
+                                    onChange={e => handleChange(i, 'frecuencia', e.target.value)}
+                                />
+                                <input
+                                    className="input"
+                                    placeholder="Duración"
+                                    value={m.duracion}
+                                    onChange={e => handleChange(i, 'duracion', e.target.value)}
+                                />
+                            </div>
+
+                            <textarea
+                                className="input w-full"
+                                placeholder="Indicaciones"
+                                value={m.indicaciones}
+                                onChange={e => handleChange(i, 'indicaciones', e.target.value)}
+                            />
+                        </div>
+                    ))}
+
+                    <div className="flex justify-between pt-4">
+                        <button onClick={agregarFila} className="px-3 py-1 bg-blue-300 rounded">+ Medicamento</button>
+                        <div className="space-x-2">
+                            <button onClick={onClose} className="px-4 py-1 bg-gray-300 rounded">Cancelar</button>
+                            <button onClick={guardar} className="px-4 py-1 bg-green-600 text-white rounded">Guardar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+
+
+    function ModalVerReceta({ open, onClose, recetaId }) {
+        const [receta, setReceta] = useState(null)
+
+        const cargarReceta = async () => {
+            if (!recetaId) return
+            try {
+                const res = await api.get(`/recetas/${recetaId}`)
+                setReceta(res.data)
+            } catch (err) {
+                console.error('Error cargando receta:', err)
+            }
+        }
+
+        useEffect(() => {
+            if (open) cargarReceta()
+        }, [open, recetaId])
+
+        useEffect(() => {
+            if (!recetaId) return
+            const ws = new WebSocket('ws://localhost:8000/ws/medicamentos')
+            ws.onmessage = async (event) => {
+                const { evento } = JSON.parse(event.data)
+                if (["crear", "actualizar", "eliminar"].includes(evento)) {
+                    cargarReceta()
+                }
+            }
+            return () => ws.close()
+        }, [recetaId])
+
+        if (!open || !receta) return null
+
+
+        const formatoFecha = (str) => new Date(str).toLocaleDateString()
+
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white p-6 rounded shadow-lg w-[700px] max-w-full space-y-4">
+                    <h2 className="text-2xl font-bold text-teal-800 text-center">Receta Médica</h2>
+
+                    <div className="text-gray-800 text-sm space-y-2 max-h-[60vh] overflow-y-auto whitespace-pre-wrap break-words">
+                        <p><strong>Paciente:</strong> {receta.paciente_nombre}</p>
+                        <p><strong>Médico:</strong> {receta.medico_nombre}</p>
+                        <p><strong>Fecha de emisión:</strong> {formatoFecha(receta.fecha_emision)}</p>
+                        {receta.observaciones && (
+                            <p><strong>Observaciones:</strong> {receta.observaciones}</p>
+                        )}
+                        <hr className="my-2" />
+                        <h3 className="text-lg font-semibold text-teal-700 mb-1">Medicamentos:</h3>
+                        {receta.medicamentos.length === 0 ? (
+                            <p>No se registraron medicamentos.</p>
+                        ) : (
+
+                            receta.medicamentos.map((m, i) => {
+                                let estadoTexto = 'Disponible'
+                                let color = 'text-green-700'
+
+                                if (m.stock === 0 || m.disponible === false) {
+                                    estadoTexto = 'Agotado'
+                                    color = 'text-red-600'
+                                } else if (m.stock <= 10) {
+                                    estadoTexto = 'Casi agotado'
+                                    color = 'text-yellow-600'
+                                }
+
+
+                                return (
+                                    <div key={i} className="border-b pb-2 mb-2">
+                                        <div className="flex justify-between items-center">
+                                            <p><strong>Medicamento:</strong> {m.medicamento_nombre}</p>
+                                            <span className={`text-sm font-semibold ${color}`}>● {estadoTexto}</span>
+                                        </div>
+                                        <p><strong>Dosis:</strong> {m.dosis}</p>
+                                        <p><strong>Frecuencia:</strong> {m.frecuencia}</p>
+                                        <p><strong>Duración:</strong> {m.duracion}</p>
+                                        {m.indicaciones && <p><strong>Indicaciones:</strong> {m.indicaciones}</p>}
+                                    </div>
+                                )
+                            })
+
+
+                        )}
+                    </div>
+
+                    <div className="flex justify-end mt-4">
+                        <button onClick={onClose} className="px-4 py-1 bg-gray-300 rounded">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+
+
 
     if (role !== 'medico') return null
 
@@ -391,15 +628,9 @@ function Expedientes() {
                                         <p><strong>Temperatura:</strong> {cita.signos_vitales?.temperatura} °C</p>
                                         <p><strong>Saturación de oxígeno:</strong> {cita.signos_vitales?.saturacion_oxigeno} %</p>
 
-                                        {cita.estado !== 'terminado' ? (
-                                            <button
-                                                onClick={() => navigate(`/dashboard/expediente/${cita.id}`)}
-                                                className="mt-2 bg-blue-600 text-white px-4 py-1 rounded text-sm"
-                                            >
-                                                Abrir expediente
-                                            </button>
-                                        ) : (
+                                        {cita.estado === 'terminado' && (
                                             <div className="mt-2 space-x-2">
+                                                {/* Botones existentes */}
                                                 {cita.certificado_medico ? (
                                                     <button
                                                         className="bg-green-700 text-white px-3 py-1 rounded text-sm"
@@ -432,9 +663,25 @@ function Expedientes() {
                                                     </button>
                                                 )}
 
+                                                {cita.receta ? (
+                                                    <button
+                                                        className="bg-cyan-700 text-white px-3 py-1 rounded text-sm"
+                                                        onClick={() => setModalVerReceta({ open: true, recetaId: cita.receta.id })}
+                                                    >
+                                                        Ver Receta
+                                                    </button>
+
+                                                ) : (
+                                                    <button
+                                                        className="bg-cyan-600 text-white px-3 py-1 rounded text-sm"
+                                                        onClick={() => setModalReceta({ open: true, citaId: cita.id })}
+                                                    >
+                                                        Generar Receta
+                                                    </button>
+                                                )}
+
                                             </div>
                                         )}
-
                                     </div>
                                 )
                             })
@@ -466,6 +713,17 @@ function Expedientes() {
                 tipo="asistencia"
                 onClose={() => setModalVerAsistencia({ open: false, data: null })}
             />
+            <ModalReceta
+                open={modalReceta.open}
+                citaId={modalReceta.citaId}
+                onClose={() => setModalReceta({ open: false, citaId: null })}
+            />
+            <ModalVerReceta
+                open={modalVerReceta.open}
+                recetaId={modalVerReceta.recetaId} // ✅ pasamos el ID correctamente
+                onClose={() => setModalVerReceta({ open: false, recetaId: null })}
+            />
+
 
 
         </div>

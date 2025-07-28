@@ -3,8 +3,8 @@ from typing import Optional
 from datetime import date, time
 from enum import Enum
 from typing import Optional, TYPE_CHECKING
-
 from .certificado import CertificadoAsistencia, CertificadoMedico
+
 
 
 if TYPE_CHECKING:
@@ -38,3 +38,5 @@ class Cita(SQLModel, table=True):
     signos_vitales: Optional["SignosVitales"] = Relationship(back_populates="cita")
     certificado_medico: Optional["CertificadoMedico"] = Relationship(back_populates="cita")
     certificado_asistencia: Optional["CertificadoAsistencia"] = Relationship(back_populates="cita")
+
+

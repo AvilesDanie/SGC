@@ -17,7 +17,8 @@ const menusPorRol = {
     { to: '/dashboard/HistorialCitasPaciente', label: 'Mi Historial' },
   ],
   farmacologo: [
-    { to: '/dashboard/stock', label: 'Stock de Medicamentos' },
+    { to: '/dashboard/medicamentos', label: 'Gestión de Medicamentos' },
+    { to: '/dashboard/recetas', label: 'Entrega de Recetas' },
   ],
   administrativo: [
     { to: '/dashboard/registro', label: 'Registro de Paciente' },

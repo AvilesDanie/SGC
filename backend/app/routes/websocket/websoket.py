@@ -1,6 +1,6 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from typing import List
-
+from .gestor_medicamentos import gestor_medicamentos
 
 router = APIRouter()
 
@@ -39,3 +39,44 @@ async def websocket_endpoint(websocket: WebSocket):
 async def notificar_actualizacion():
     await manager.broadcast({"evento": "actualizacion_citas"})
 
+@router.websocket("/ws/medicamentos")
+async def websocket_medicamentos(websocket: WebSocket):
+    await gestor_medicamentos.conectar(websocket)
+    try:
+        while True:
+            await websocket.receive_text()  # Mantener la conexión viva
+    except WebSocketDisconnect:
+        gestor_medicamentos.desconectar(websocket)
+
+
+
+class GestorWebSocketRecetas:
+    def __init__(self):
+        self.conexiones: List[WebSocket] = []
+
+    async def conectar(self, websocket: WebSocket):
+        await websocket.accept()
+        self.conexiones.append(websocket)
+
+    def desconectar(self, websocket: WebSocket):
+        self.conexiones.remove(websocket)
+
+    async def notificar(self, evento: str, datos: dict = None):
+        mensaje = {
+            "evento": evento,
+            "datos": datos or {}
+        }
+        for conexion in self.conexiones:
+            await conexion.send_json(mensaje)
+
+gestor_recetas = GestorWebSocketRecetas()
+
+
+@router.websocket("/ws/recetas")
+async def ws_recetas(websocket: WebSocket):
+    await gestor_recetas.conectar(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        gestor_recetas.desconectar(websocket)

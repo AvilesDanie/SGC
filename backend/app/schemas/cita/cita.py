@@ -71,6 +71,7 @@ class CitaWithMedicoRead(BaseModel):
     medico: MedicoInfo
     certificado_medico: Optional[bool] = False
     certificado_asistencia: Optional[bool] = False
+    tiene_receta: Optional[bool] = False
 
     class Config:
         orm_mode = True
