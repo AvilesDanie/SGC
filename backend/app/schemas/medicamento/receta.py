@@ -15,7 +15,7 @@ class RecetaMedicamentoRead(RecetaMedicamentoBase):
     medicamento_nombre: str
     disponible: bool
     stock: int
-
+    entregado: Optional[bool] = False
 
 class RecetaCreate(BaseModel):
     cita_id: int

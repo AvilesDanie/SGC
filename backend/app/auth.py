@@ -50,7 +50,6 @@ def get_current_user_optional(authorization: str = Header(default=None)):
 
 
 
-
 def get_current_user(
     authorization: str = Header(...),
     session: Session = Depends(get_session)
@@ -64,19 +63,26 @@ def get_current_user(
         if scheme.lower() != "bearer":
             raise HTTPException(status_code=401, detail="Formato de autorización inválido")
 
-        # Decodificar token
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
 
-        if username is None:
+        username: str = payload.get("sub")
+        role: str = payload.get("role")
+
+        if username is None or role is None:
             raise HTTPException(status_code=401, detail="Token inválido")
 
-    except (JWTError, ValueError):
+    except (JWTError, ValueError) as e:
         raise HTTPException(status_code=401, detail="Token inválido o expirado")
 
-    # Buscar usuario en la base de datos
     user = session.exec(select(User).where(User.username == username)).first()
-    if not user or not user.is_active:
-        raise HTTPException(status_code=401, detail="Usuario no autorizado o inactivo")
+    print("current_user.role repr:", repr(user.role))
+    print("current_user.role type:", type(user.role))
+
+    print(f"Usuario autenticado: {user.username}, Rol: {user.role}")
+    if not user:
+        raise HTTPException(status_code=401, detail="Usuario no autorizado")
+
+    if not user.is_active:
+        raise HTTPException(status_code=401, detail="Usuario inactivo")
 
     return user

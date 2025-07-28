@@ -78,6 +78,14 @@ function Expedientes() {
         return matchCedula && matchNombre
     }
 
+    const handleRecetaGuardada = async (citaId, nuevaReceta) => {
+        setCitas(prev =>
+            prev.map(cita =>
+                cita.id === citaId ? { ...cita, receta: nuevaReceta } : cita
+            )
+        );
+    };
+
 
     const cargarCitas = async (medicoId) => {
         try {
@@ -351,15 +359,27 @@ function Expedientes() {
 
 
 
-    function ModalReceta({ open, onClose, citaId }) {
+    function ModalReceta({ open, onClose, citaId, onRecetaGuardada }) {
         const [medicamentos, setMedicamentos] = useState([
             { medicamento_id: '', dosis: '', frecuencia: '', duracion: '', indicaciones: '' }
         ])
         const [opcionesMedicamentos, setOpcionesMedicamentos] = useState([])
 
+        const dosisOptions = [0.5, 1, 1.5, 2, 3, 4]
+        const frecuenciaOptions = [
+            'Cada 4 horas',
+            'Cada 6 horas',
+            'Cada 8 horas',
+            'Cada 12 horas',
+            'Cada 24 horas',
+            '2 veces al día',
+            '1 vez al día'
+        ]
+        const duracionOptions = ['3 días', '5 días', '7 días', '10 días', '14 días', '30 días']
+
         useEffect(() => {
             if (open) {
-                api.get('/medicamentos')  // Asegúrate de que esta ruta devuelva todos los medicamentos
+                api.get('/medicamentos')
                     .then(res => setOpcionesMedicamentos(res.data))
                     .catch(() => setOpcionesMedicamentos([]))
             }
@@ -381,98 +401,134 @@ function Expedientes() {
             setMedicamentos(nuevos)
         }
 
+        const [cargando, setCargando] = useState(false)
+
         const guardar = async () => {
+            if (cargando) return
+            setCargando(true)
             try {
                 await api.post('/recetas', {
                     cita_id: citaId,
                     observaciones: '',
                     medicamentos
-                })
-                onClose()
+                }).then(res => {
+                    if (onRecetaGuardada) onRecetaGuardada(citaId, res.data);
+                    onClose();
+                });
+
             } catch (err) {
                 console.error(err)
                 alert('Error al crear receta')
+            } finally {
+                setCargando(false)
             }
         }
 
         if (!open) return null
 
+
+
         return (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white p-6 rounded shadow-lg w-[700px] max-w-full space-y-4">
-                    <h2 className="text-xl font-bold text-teal-800">Generar Receta</h2>
+                <div className="bg-white rounded shadow-lg w-[700px] max-w-full max-h-[90vh] flex flex-col">
+                    <div className="p-6 border-b">
+                        <h2 className="text-xl font-bold text-teal-800">Generar Receta</h2>
+                    </div>
 
-                    {medicamentos.map((m, i) => (
-                        <div key={i} className="border rounded p-3 space-y-2 bg-gray-50 relative">
-                            <button
-                                onClick={() => eliminarFila(i)}
-                                className="absolute top-2 right-2 text-red-500 text-sm"
-                                title="Eliminar"
-                            >
-                                ✕
-                            </button>
-
-                            <div className="grid grid-cols-2 gap-2">
-                                <select
-                                    className="input"
-                                    value={m.medicamento_id}
-                                    onChange={e => handleChange(i, 'medicamento_id', e.target.value)}
+                    {/* Contenedor scrollable */}
+                    <div className="p-6 overflow-y-auto flex-1 space-y-4">
+                        {medicamentos.map((m, i) => (
+                            <div key={i} className="border rounded p-3 space-y-2 bg-gray-50 relative">
+                                <button
+                                    onClick={() => eliminarFila(i)}
+                                    className="absolute top-2 right-2 text-red-500 text-sm"
+                                    title="Eliminar"
                                 >
-                                    <option value="">Seleccionar medicamento</option>
-                                    {opcionesMedicamentos.map(op => (
-                                        <option key={op.id} value={op.id}>
-                                            {op.nombre} {op.concentracion ? `(${op.concentracion})` : ''}
-                                            {` - ${op.forma_farmaceutica}, ${op.unidad_presentacion}`}
-                                            {` - Stock: ${op.stock}`}
-                                        </option>
+                                    ✕
+                                </button>
 
+                                <div className="grid grid-cols-2 gap-2">
+                                    <select
+                                        className="input"
+                                        value={m.medicamento_id}
+                                        onChange={e => handleChange(i, 'medicamento_id', e.target.value)}
+                                    >
+                                        <option value="">Seleccionar medicamento</option>
+                                        {opcionesMedicamentos
+                                            .filter(op => {
+                                                const idsSeleccionados = medicamentos
+                                                    .map((med, idx) => idx !== i && String(med.medicamento_id))
+                                                    .filter(Boolean);
+                                                return !idsSeleccionados.includes(String(op.id)) || String(op.id) === String(m.medicamento_id);
+                                            })
 
+                                            .map(op => (
+                                                <option key={op.id} value={op.id}>
+                                                    {op.nombre} {op.concentracion ? `(${op.concentracion})` : ''} - {op.forma_farmaceutica}, {op.unidad_presentacion} - Stock: {op.stock}
+                                                </option>
+                                            ))}
 
-                                    ))}
-                                </select>
+                                    </select>
 
-                                <input
-                                    className="input"
-                                    placeholder="Dosis"
-                                    value={m.dosis}
-                                    onChange={e => handleChange(i, 'dosis', e.target.value)}
+                                    <select
+                                        className="input"
+                                        value={m.dosis}
+                                        onChange={e => handleChange(i, 'dosis', e.target.value)}
+                                    >
+                                        <option value="">Dosis</option>
+                                        {dosisOptions.map(d => (
+                                            <option key={d} value={d}>{d} unidad(es)</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                    <select
+                                        className="input"
+                                        value={m.frecuencia}
+                                        onChange={e => handleChange(i, 'frecuencia', e.target.value)}
+                                    >
+                                        <option value="">Frecuencia</option>
+                                        {frecuenciaOptions.map(f => (
+                                            <option key={f} value={f}>{f}</option>
+                                        ))}
+                                    </select>
+
+                                    <select
+                                        className="input"
+                                        value={m.duracion}
+                                        onChange={e => handleChange(i, 'duracion', e.target.value)}
+                                    >
+                                        <option value="">Duración</option>
+                                        {duracionOptions.map(d => (
+                                            <option key={d} value={d}>{d}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <textarea
+                                    className="input w-full"
+                                    placeholder="Indicaciones"
+                                    value={m.indicaciones}
+                                    onChange={e => handleChange(i, 'indicaciones', e.target.value)}
                                 />
                             </div>
+                        ))}
+                    </div>
 
-                            <div className="grid grid-cols-2 gap-2">
-                                <input
-                                    className="input"
-                                    placeholder="Frecuencia"
-                                    value={m.frecuencia}
-                                    onChange={e => handleChange(i, 'frecuencia', e.target.value)}
-                                />
-                                <input
-                                    className="input"
-                                    placeholder="Duración"
-                                    value={m.duracion}
-                                    onChange={e => handleChange(i, 'duracion', e.target.value)}
-                                />
-                            </div>
-
-                            <textarea
-                                className="input w-full"
-                                placeholder="Indicaciones"
-                                value={m.indicaciones}
-                                onChange={e => handleChange(i, 'indicaciones', e.target.value)}
-                            />
-                        </div>
-                    ))}
-
-                    <div className="flex justify-between pt-4">
+                    <div className="p-4 border-t flex justify-between">
                         <button onClick={agregarFila} className="px-3 py-1 bg-blue-300 rounded">+ Medicamento</button>
                         <div className="space-x-2">
                             <button onClick={onClose} className="px-4 py-1 bg-gray-300 rounded">Cancelar</button>
-                            <button onClick={guardar} className="px-4 py-1 bg-green-600 text-white rounded">Guardar</button>
+                            <button onClick={guardar} className="px-4 py-1 bg-green-600 text-white rounded" disabled={cargando}>
+                                {cargando ? 'Guardando...' : 'Guardar'}
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
-        )
+        );
+
     }
 
 
@@ -717,7 +773,9 @@ function Expedientes() {
                 open={modalReceta.open}
                 citaId={modalReceta.citaId}
                 onClose={() => setModalReceta({ open: false, citaId: null })}
+                onRecetaGuardada={handleRecetaGuardada}
             />
+
             <ModalVerReceta
                 open={modalVerReceta.open}
                 recetaId={modalVerReceta.recetaId} // ✅ pasamos el ID correctamente
