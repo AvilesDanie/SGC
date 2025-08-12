@@ -738,6 +738,15 @@ function Expedientes() {
 
                                             </div>
                                         )}
+                                        {cita.estado !== 'terminado' && (
+                                            <button
+                                                onClick={() => navigate(`/dashboard/expediente/${cita.id}`)}
+                                                className="mt-2 bg-blue-600 text-white px-4 py-1 rounded text-sm"
+                                            >
+                                                Abrir expediente
+                                            </button>
+                                        )}
+
                                     </div>
                                 )
                             })
