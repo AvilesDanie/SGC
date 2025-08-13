@@ -310,7 +310,6 @@ function HistorialCitasPaciente() {
             <option value="en_espera">En espera</option>
             <option value="en_consulta">En consulta</option>
             <option value="terminado">Terminado</option>
-            <option value="perdida">Perdida</option>
           </select>
           <input
             type="date"
